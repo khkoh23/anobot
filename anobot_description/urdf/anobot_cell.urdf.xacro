@@ -1,0 +1,76 @@
+<?xml version="1.0"?>
+<robot name="anobot_cell" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find anobot_description)/urdf/anobot_env.xacro"/>
+  <xacro:include filename="$(find anobot_description)/urdf/anobot_agv.xacro"/>
+  <xacro:include filename="$(find anobot_description)/urdf/anobot_ur.xacro"/>
+  <xacro:include filename="$(find anobot_description)/urdf/anobot_end_effector.xacro"/> 
+
+  <xacro:arg name="ur_type" default="ur10e"/>
+  <xacro:arg name="joint_limits_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/joint_limits.yaml"/>
+  <xacro:arg name="kinematics_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/default_kinematics.yaml"/>
+  <xacro:arg name="physical_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/physical_parameters.yaml"/>
+  <xacro:arg name="visual_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/visual_parameters.yaml"/>
+
+  <material name="dark_grey">
+     <color rgba="0.25 0.25 0.25 1"/>
+  </material>
+
+  <material name="grey">
+    <color rgba="0.5 0.5 0.5 1"/>
+  </material>
+
+  <material name="invisible">
+    <color rgba="0.9 0.9 0.9 0.1"/>
+  </material>
+
+  <material name="white">
+    <color rgba="1 1 1 1"/>
+  </material>
+
+  <material name="cobalt_blue">
+    <color rgba="0 0.25 0.76 1"/>
+  </material>
+
+  <material name="pale_green">
+    <color rgba="0.60 0.98 0.60 1"/>
+  </material>
+
+  <link name="world"/>
+
+  <xacro:workstation 
+    name="workstation_1" 
+    parent="world"
+    >
+    <origin xyz="0 1.5 0" rpy="0 0 0"/>
+  </xacro:workstation>
+
+  <!-- TEMPORARY RVIZ FIX: Connect the world to the AGV so it builds a single root tree -->
+  <!-- Remove or comment this joint out when moving to Gazebo/Nav2! -->
+  <joint name="rviz_temporary_world_to_agv" type="fixed">
+    <parent link="world"/>
+    <child link="base_footprint"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <xacro:anobot_agv/>
+
+  <xacro:anobot_ur
+    parent="robot_mount"
+    ur_type="$(arg ur_type)"
+    joint_limits_parameters_file="$(arg joint_limits_parameters_file)"
+    kinematics_parameters_file="$(arg kinematics_parameters_file)"
+    physical_parameters_file="$(arg physical_parameters_file)"
+    visual_parameters_file="$(arg visual_parameters_file)"
+    >
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </xacro:anobot_ur> 
+
+  <xacro:anobot_end_effector 
+    ur_type="$(arg ur_type)"
+    connected_to="tool0"
+    >
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </xacro:anobot_end_effector>
+
+</robot>

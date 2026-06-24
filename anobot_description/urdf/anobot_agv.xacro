@@ -1,0 +1,115 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <!-- <xacro:macro name="anobot_agv" params="parent"> -->
+  <xacro:macro name="anobot_agv">
+
+    <xacro:property name="ground_clearance" value="0.050" /> 
+    <xacro:property name="agv_length" value="0.936" /> 
+    <xacro:property name="agv_width" value="0.630" /> 
+    <xacro:property name="agv_height" value="0.215" />
+    <xacro:property name="body_length" value="0.9" /> 
+    <xacro:property name="body_width" value="0.6" /> 
+    <xacro:property name="body_height" value="0.6" />
+
+    <link name="base_footprint" />
+
+    <link name="base_link">
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <mass value="65.0" />
+        <inertia ixx="3.2" ixy="0.0" ixz="0.0" iyy="5.2" iyz="0.0" izz="6.7"/>
+      </inertial>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${agv_length} ${agv_width} ${agv_height}"/>
+        </geometry>
+        <material name="grey"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${agv_length} ${agv_width} ${agv_height}"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <link name="body_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${body_length} ${body_width} ${body_height}"/>
+        </geometry>
+        <material name="white"/>
+      </visual>
+      <collision>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <geometry>
+          <box size="${body_length} ${body_width} ${body_height}"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <link name="dummy_estop">
+      <visual>
+        <geometry>
+          <mesh filename="package://anobot_description/meshes/estop.dae" scale="1 1 1" />
+        </geometry>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+      </visual>
+    </link>
+
+    <link name="robot_mount"/>
+
+
+
+    <joint name="base_footprint_to_base_link" type="fixed">
+      <parent link="base_footprint"/>
+      <child link="base_link"/>
+      <origin xyz="0 0 ${agv_height/2+ground_clearance}" rpy="0 0 0"/>
+    </joint>
+
+    <joint name="base_to_body" type="fixed">
+      <parent link="base_link"/>
+      <child link="body_link"/>
+      <origin xyz="0 0 ${agv_height/2+body_height/2}" rpy="0 0 0"/>
+    </joint>
+
+    <joint name="body_to_estop" type="fixed">
+      <parent link="body_link"/>
+      <child link="dummy_estop"/>
+      <origin xyz="0 ${-body_width/2+0.030} ${body_height/2-0.050}" rpy="0 0 3.1416"/>
+    </joint>
+
+    <joint name="body_to_mount" type="fixed">
+      <parent link="body_link"/>
+      <child link="robot_mount"/>
+      <origin xyz="0 0 ${body_height/2}" rpy="0 0 -1.5708"/>
+    </joint>
+
+
+
+    <gazebo reference="base_link">
+      <material>Gazebo/White</material>
+      <mu1>0.01</mu1>
+      <mu2>0.01</mu2>
+    </gazebo>
+
+    <gazebo>
+      <plugin name="agv_planar_move" filename="libgazebo_ros_planar_move.so">
+        <ros>
+          <remapping>cmd_vel:=cmd_vel</remapping>
+          <remapping>odom:=odom</remapping>
+        </ros>
+        <update_rate>50</update_rate>
+        <robot_base_frame>base_footprint</robot_base_frame>
+        <odometry_frame>odom</odometry_frame>
+        <publish_odom>true</publish_odom>
+        <publish_odom_tf>true</publish_odom_tf>
+      </plugin>
+    </gazebo>
+
+  </xacro:macro>
+
+</robot>

@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:macro name="workstation" params="
+    name 
+    parent
+    *origin
+  ">
+
+    <xacro:property name="workstation_length" value="1.322" /> 
+    <xacro:property name="workstation_width" value="1.322" /> 
+    <xacro:property name="workstation_height" value="1.200" />
+
+    <link name="${name}_link">
+      <visual>
+        <geometry>
+          <box size="${workstation_length} ${workstation_width} ${workstation_height}"/>
+        </geometry>
+        <origin xyz="0 0 ${workstation_height/2}" rpy="0 0 0"/>
+        <material name="pale_green"/>
+      </visual>
+      <collision>
+        <geometry>
+          <box size="${workstation_length} ${workstation_width} ${workstation_height}"/>
+        </geometry>
+        <origin xyz="0 0 ${workstation_height/2}" rpy="0 0 0"/>
+      </collision>
+    </link>
+
+
+
+    <joint name="${name}_joint" type="fixed">
+      <xacro:insert_block name="origin" />
+      <parent link="${parent}" />
+      <child link="${name}_link" />
+    </joint>
+
+
+  </xacro:macro>
+
+</robot>

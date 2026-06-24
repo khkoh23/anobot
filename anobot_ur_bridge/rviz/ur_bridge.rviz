@@ -1,0 +1,288 @@
+Panels:
+  - Class: rviz_common/Displays
+    Help Height: 87
+    Name: Displays
+    Property Tree Widget:
+      Expanded: ~
+      Splitter Ratio: 0.5
+    Tree Height: 389
+  - Class: rviz_common/Views
+    Expanded:
+      - /Current View1
+    Name: Views
+    Splitter Ratio: 0.5
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.5
+      Cell Size: 1
+      Class: rviz_default_plugins/Grid
+      Color: 160; 160; 164
+      Enabled: true
+      Line Style:
+        Line Width: 0.029999999329447746
+        Value: Lines
+      Name: Grid
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Plane: XY
+      Plane Cell Count: 10
+      Reference Frame: <Fixed Frame>
+      Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        d405:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        dummy_coil:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        dummy_head:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        fts300s:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robot_mount:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        table:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        uc4:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        ur10e_base:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        ur10e_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        ur10e_base_link_inertia:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        ur10e_flange:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        ur10e_forearm_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        ur10e_ft_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        ur10e_shoulder_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        ur10e_tcp:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        ur10e_tool0:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        ur10e_upper_arm_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        ur10e_wrist_1_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        ur10e_wrist_2_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        ur10e_wrist_3_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        world:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+      Mass Properties:
+        Inertia: false
+        Mass: false
+      Name: RobotModel
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Filter (blacklist): ""
+      Filter (whitelist): ""
+      Frame Timeout: 15
+      Frames:
+        All Enabled: true
+        d405:
+          Value: true
+        dummy_coil:
+          Value: true
+        dummy_head:
+          Value: true
+        fts300s:
+          Value: true
+        robot_mount:
+          Value: true
+        table:
+          Value: true
+        uc4:
+          Value: true
+        ur10e_base:
+          Value: true
+        ur10e_base_link:
+          Value: true
+        ur10e_base_link_inertia:
+          Value: true
+        ur10e_flange:
+          Value: true
+        ur10e_forearm_link:
+          Value: true
+        ur10e_ft_frame:
+          Value: true
+        ur10e_shoulder_link:
+          Value: true
+        ur10e_tcp:
+          Value: true
+        ur10e_tool0:
+          Value: true
+        ur10e_upper_arm_link:
+          Value: true
+        ur10e_wrist_1_link:
+          Value: true
+        ur10e_wrist_2_link:
+          Value: true
+        ur10e_wrist_3_link:
+          Value: true
+        world:
+          Value: true
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: false
+      Tree:
+        world:
+          table:
+            dummy_head:
+              {}
+            robot_mount:
+              ur10e_base_link:
+                ur10e_base:
+                  {}
+                ur10e_base_link_inertia:
+                  ur10e_shoulder_link:
+                    ur10e_upper_arm_link:
+                      ur10e_forearm_link:
+                        ur10e_wrist_1_link:
+                          ur10e_wrist_2_link:
+                            ur10e_wrist_3_link:
+                              ur10e_flange:
+                                ur10e_tool0:
+                                  fts300s:
+                                    d405:
+                                      {}
+                                    dummy_coil:
+                                      ur10e_tcp:
+                                        {}
+                                    uc4:
+                                      {}
+                              ur10e_ft_frame:
+                                {}
+      Update Interval: 0
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: world
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+  Transformation:
+    Current:
+      Class: rviz_default_plugins/TF
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 3.289311408996582
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.05999999865889549
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
+      Focal Point:
+        X: 0.8393054604530334
+        Y: 0.6853293776512146
+        Z: 1.452785611152649
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05000000074505806
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.009999999776482582
+      Pitch: 0.49000027775764465
+      Target Frame: <Fixed Frame>
+      Value: Orbit (rviz)
+      Yaw: 0.5718141794204712
+    Saved: ~
+Window Geometry:
+  Displays:
+    collapsed: false
+  Height: 1011
+  Hide Left Dock: false
+  Hide Right Dock: false
+  QMainWindow State: 000000ff00000000fd00000001000000000000015600000395fc0200000002fb000000100044006900730070006c006100790073010000003f0000021c000000cc00fffffffb0000000a00560069006500770073010000026100000173000000a900ffffff000005e20000039500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Views:
+    collapsed: false
+  Width: 1854
+  X: 66
+  Y: 32

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="https://ros.org/wiki/xacro">
+
+  <xacro:macro name="anobot_end_effector" params="
+  ur_type
+  connected_to
+  *origin
+  ">
+
+    <xacro:property name="tcp_offset" value="0.150" /> 
+
+
+
+    <link name="${ur_type}_tcp"/>
+
+
+
+    <joint name="${ur_type}_tcp_joint" type="fixed">
+      <parent link="${ur_type}_${connected_to}"/>
+      <child link="${ur_type}_tcp"/>
+      <origin xyz="0 0 ${tcp_offset}" rpy="0 0 0"/>
+    </joint>
+
+  </xacro:macro>
+</robot>

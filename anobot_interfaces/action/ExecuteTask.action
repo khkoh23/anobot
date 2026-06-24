@@ -1,0 +1,10 @@
+string task_name
+
+---
+bool success
+string message
+
+---
+string current_state
+string active_node
+string message
