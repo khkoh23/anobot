@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
-<robot name="anobot_cell" xmlns:xacro="http://ros.org/wiki/xacro">
+<robot name="anobot" xmlns:xacro="http://ros.org/wiki/xacro">
 
-  <xacro:include filename="$(find anobot_description)/urdf/anobot_env.xacro"/>
   <xacro:include filename="$(find anobot_description)/urdf/anobot_agv.xacro"/>
   <xacro:include filename="$(find anobot_description)/urdf/anobot_ur.xacro"/>
   <xacro:include filename="$(find anobot_description)/urdf/anobot_end_effector.xacro"/> 
@@ -37,23 +36,6 @@
     <color rgba="0.60 0.98 0.60 1"/>
   </material>
 
-  <link name="world"/>
-
-  <xacro:workstation 
-    name="workstation_1" 
-    parent="world"
-    >
-    <origin xyz="0 1.5 0" rpy="0 0 0"/>
-  </xacro:workstation>
-
-  <!-- TEMPORARY RVIZ FIX: Connect the world to the AGV so it builds a single root tree -->
-  <!-- Remove or comment this joint out when moving to Gazebo/Nav2! -->
-  <joint name="rviz_temporary_world_to_agv" type="fixed">
-    <parent link="world"/>
-    <child link="base_footprint"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-  </joint>
-
   <xacro:anobot_agv/>
 
   <xacro:anobot_ur
@@ -62,16 +44,14 @@
     joint_limits_parameters_file="$(arg joint_limits_parameters_file)"
     kinematics_parameters_file="$(arg kinematics_parameters_file)"
     physical_parameters_file="$(arg physical_parameters_file)"
-    visual_parameters_file="$(arg visual_parameters_file)"
-    >
-    <origin xyz="0 0 0" rpy="0 0 0" />
+    visual_parameters_file="$(arg visual_parameters_file)">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
   </xacro:anobot_ur> 
 
   <xacro:anobot_end_effector 
     ur_type="$(arg ur_type)"
-    connected_to="tool0"
-    >
-    <origin xyz="0 0 0" rpy="0 0 0" />
+    connected_to="tool0">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
   </xacro:anobot_end_effector>
 
 

@@ -1,13 +1,13 @@
 moveit_setup_assistant_config:
   urdf:
     package: anobot_description
-    relative_path: urdf/anobot_cell.urdf.xacro
+    relative_path: urdf/anobot.urdf.xacro
   srdf:
-    relative_path: config/anobot_cell.srdf
+    relative_path: config/anobot.srdf
   package_settings:
     author_name: khkoh
     author_email: khkoh23@gmail.com
-    generated_timestamp: 1782266668
+    generated_timestamp: 1782358682
   control_xacro:
     command:
       - position

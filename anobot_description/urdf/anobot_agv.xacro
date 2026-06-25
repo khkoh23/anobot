@@ -1,24 +1,26 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
 
-  <!-- <xacro:macro name="anobot_agv" params="parent"> -->
   <xacro:macro name="anobot_agv">
 
-    <xacro:property name="ground_clearance" value="0.050" /> 
-    <xacro:property name="agv_length" value="0.936" /> 
-    <xacro:property name="agv_width" value="0.630" /> 
-    <xacro:property name="agv_height" value="0.215" />
-    <xacro:property name="body_length" value="0.9" /> 
-    <xacro:property name="body_width" value="0.6" /> 
-    <xacro:property name="body_height" value="0.6" />
+    <xacro:property name="ground_clearance" value="0.050"/> 
+    <xacro:property name="agv_length" value="0.936"/> 
+    <xacro:property name="agv_width" value="0.630"/> 
+    <xacro:property name="agv_height" value="0.215"/>
+    <xacro:property name="body_length" value="0.9"/> 
+    <xacro:property name="body_width" value="0.6"/> 
+    <xacro:property name="body_height" value="0.6"/>
 
-    <link name="base_footprint" />
+    <link name="base_footprint"/>
 
     <link name="base_link">
       <inertial>
-        <origin xyz="0 0 0" rpy="0 0 0" />
-        <mass value="65.0" />
-        <inertia ixx="3.2" ixy="0.0" ixz="0.0" iyy="5.2" iyz="0.0" izz="6.7"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="65.0"/>
+        <inertia 
+          ixx="3.2" ixy="0.0" ixz="0.0" 
+          iyy="5.2" iyz="0.0" 
+          izz="6.7"/>
       </inertial>
       <visual>
         <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -54,7 +56,7 @@
     <link name="dummy_estop">
       <visual>
         <geometry>
-          <mesh filename="package://anobot_description/meshes/estop.dae" scale="1 1 1" />
+          <mesh filename="package://anobot_description/meshes/estop.dae" scale="1 1 1"/>
         </geometry>
         <origin rpy="0 0 0" xyz="0 0 0"/>
       </visual>
@@ -67,22 +69,22 @@
     <joint name="base_footprint_to_base_link" type="fixed">
       <parent link="base_footprint"/>
       <child link="base_link"/>
-      <origin xyz="0 0 ${agv_height/2+ground_clearance}" rpy="0 0 0"/>
+      <origin xyz="0 0 ${agv_height/2 + ground_clearance}" rpy="0 0 0"/>
     </joint>
 
-    <joint name="base_to_body" type="fixed">
+    <joint name="base_link_to_body_link" type="fixed">
       <parent link="base_link"/>
       <child link="body_link"/>
-      <origin xyz="0 0 ${agv_height/2+body_height/2}" rpy="0 0 0"/>
+      <origin xyz="0 0 ${agv_height/2 + body_height/2}" rpy="0 0 0"/>
     </joint>
 
-    <joint name="body_to_estop" type="fixed">
+    <joint name="body_link_to_dummy_estop" type="fixed">
       <parent link="body_link"/>
       <child link="dummy_estop"/>
-      <origin xyz="0 ${-body_width/2+0.030} ${body_height/2-0.050}" rpy="0 0 3.1416"/>
+      <origin xyz="0 ${-body_width/2 + 0.030} ${body_height/2 - 0.050}" rpy="0 0 3.1416"/>
     </joint>
 
-    <joint name="body_to_mount" type="fixed">
+    <joint name="body_link_to_robot_mount" type="fixed">
       <parent link="body_link"/>
       <child link="robot_mount"/>
       <origin xyz="0 0 ${body_height/2}" rpy="0 0 -1.5708"/>
