@@ -11,7 +11,10 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=['setuptools'],
+    install_requires=[
+      'setuptools',
+      'trimesh',
+    ],
     zip_safe=True,
     maintainer='khkoh',
     maintainer_email='khkoh23@gmail.com',
@@ -25,6 +28,7 @@ setup(
     entry_points={
         'console_scripts': [
           'apply_factory_scene = anobot_scene.apply_factory_scene:main',
+          'rod_scene_manager = anobot_scene.rod_scene_manager:main',
         ],
     },
 )

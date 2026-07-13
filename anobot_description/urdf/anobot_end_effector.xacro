@@ -2,22 +2,82 @@
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
 
   <xacro:macro name="anobot_end_effector" params="
-  ur_type
-  connected_to
-  *origin
+    ur_type
+    connected_to
+    *origin
   ">
 
-    <xacro:property name="tcp_offset" value="0.150" /> 
+    <!--
+      Temporary end-effector envelope for workspace and collision studies.
 
+      tool_length:
+        Distance from UR tool0 to the assumed rod gripping point.
 
-    <link name="${ur_type}_tcp"/>
+      The dimensions should later be replaced with the actual end-effector
+      dimensions and calibrated grasp frame.
+    -->
+    <xacro:property name="tool_length" value="0.150"/>
+    <xacro:property name="tool_width" value="0.100"/>
+    <xacro:property name="tool_depth" value="0.100"/>
 
+    <!-- Physical placeholder end-effector -->
+    <link name="anobot_tool_link">
 
-    <joint name="${ur_type}_tcp_joint" type="fixed">
+      <visual>
+        <origin
+          xyz="0 0 ${tool_length / 2.0}"
+          rpy="0 0 0"/>
+        <geometry>
+          <box size="${tool_width} ${tool_depth} ${tool_length}"/>
+        </geometry>
+        <material name="cobalt_blue"/>
+      </visual>
+
+      <collision>
+        <origin
+          xyz="0 0 ${tool_length / 2.0}"
+          rpy="0 0 0"/>
+        <geometry>
+          <box size="${tool_width} ${tool_depth} ${tool_length}"/>
+        </geometry>
+      </collision>
+
+      <!-- Inertial values are approximate and only for simulation validity. -->
+      <inertial>
+        <origin
+          xyz="0 0 ${tool_length / 2.0}"
+          rpy="0 0 0"/>
+        <mass value="1.0"/>
+        <inertia
+          ixx="0.002708"
+          ixy="0.0"
+          ixz="0.0"
+          iyy="0.002708"
+          iyz="0.0"
+          izz="0.001667"/>
+      </inertial>
+
+    </link>
+
+    <joint name="anobot_tool_joint" type="fixed">
       <parent link="${ur_type}_${connected_to}"/>
-      <child link="${ur_type}_tcp"/>
-      <origin xyz="0 0 ${tcp_offset}" rpy="0 0 0"/>
+      <child link="anobot_tool_link"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <!--
+      This link is the assumed rod grasping point.
+
+      An attached MoveIt collision object can be attached to this link.
+    -->
+    <link name="anobot_grasp_frame"/>
+
+    <joint name="anobot_grasp_joint" type="fixed">
+      <parent link="anobot_tool_link"/>
+      <child link="anobot_grasp_frame"/>
+      <origin xyz="0 0 ${tool_length}" rpy="0 0 0"/>
     </joint>
 
   </xacro:macro>
+
 </robot>
