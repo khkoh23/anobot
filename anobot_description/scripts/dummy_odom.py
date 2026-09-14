@@ -10,9 +10,9 @@ class DummyOdom(Node):
         super().__init__('dummy_odom_node')
         
         # Current simulated position of the AGV
-        self.x = 0.5
-        self.y = 0.0
-        self.yaw = 0.0
+        self.x = 0.4
+        self.y = 6.6
+        self.yaw = 1.5708
         
         # Velocity storage
         self.vx = 0.0

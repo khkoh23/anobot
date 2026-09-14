@@ -31,7 +31,8 @@ class ApplyFactoryScene(Node):
         self.get_logger().info("Waiting for /apply_planning_scene service...")
         self.client.wait_for_service()
         self.get_logger().info("Service available.")
-        mesh_path = os.path.expanduser("~/anobot_ws/src/anobot/anobot_scene/meshes/tank_7.STL")
+        # mesh_path = os.path.expanduser("~/anobot_ws/src/anobot/anobot_scene/meshes/tank_7.STL")
+        mesh_path = os.path.expanduser("~/anobot_ws/src/anobot/anobot_scene/meshes/lab_scene.STL")
         if not os.path.exists(mesh_path):
             self.get_logger().error(f"Mesh file not found at: {mesh_path}")
             self.destroy_node()
@@ -141,17 +142,20 @@ class ApplyFactoryScene(Node):
         """
         Build a PlanningScene update and send it to MoveIt.
         """
-        # workstation_1 = self.make_box(
-        #     object_id="workstation_1",
+        # tank_1 = self.make_box(
+        #     object_id="fake_tank_1",
         #     frame_id="world",
-        #     size=(1.322, 1.322, 1.200),
-        #     xyz=(0.0, 1.5, 0.6),
+        #     size=(1.322, 0.8, 1.200),
+        #     xyz=(1.5, 1.5, 0.6),
         # )
         tank_7 = self.make_mesh(
             object_id="tank_7",
             frame_id="world",
             mesh_path=mesh_path,
-            xyz=(0.0, 1.5, 1.150), # Position of the tank
+            # xyz=(0.0, 1.5, 1.150), # Position of the tank
+            # rpy=(1.5708, 0.0, 0.0), # Optional rotation
+            # scale=0.001,
+            xyz=(0.0, 0.0, 0.0), # Position of the tank
             rpy=(1.5708, 0.0, 0.0), # Optional rotation
             scale=0.001,
         )
@@ -173,16 +177,14 @@ class ApplyFactoryScene(Node):
         # )
         scene = PlanningScene()
         scene.is_diff = True
-        # scene.world.collision_objects.append(workstation_1)
+        # scene.world.collision_objects.append(tank_1)
         scene.world.collision_objects.append(tank_7)
         # scene.world.collision_objects.append(tank_2)
         # scene.world.collision_objects.append(tank_3)
-        scene.object_colors.append(self.make_color(
-            "tank_7", 0.8, 0.8, 0.8, 1.0))
-        # scene.object_colors.append(self.make_color(
-        #     "fake_tank_2", 0.0, 1.0, 0.0, 1.0))
-        # scene.object_colors.append(self.make_color(
-        #     "fake_tank_3", 0.0, 0.0, 1.0, 1.0))
+        # scene.object_colors.append(self.make_color("fake_tank_1", 0.0, 0.0, 1.0, 1.0)) 
+        scene.object_colors.append(self.make_color("tank_7", 0.8, 0.8, 0.8, 1.0)) 
+        # scene.object_colors.append(self.make_color("fake_tank_2", 0.0, 1.0, 0.0, 1.0)) 
+        # scene.object_colors.append(self.make_color("fake_tank_3", 0.0, 0.0, 1.0, 1.0)) 
         request = ApplyPlanningScene.Request()
         request.scene = scene
         future = self.client.call_async(request)

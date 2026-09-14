@@ -2,6 +2,7 @@
 
 import copy
 import math
+import os
 import time
 
 import rclpy
@@ -9,7 +10,9 @@ from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.time import Time
 
-from geometry_msgs.msg import Pose
+from ament_index_python.packages import get_package_share_directory
+from geometry_msgs.msg import Point, Pose
+
 from moveit_msgs.msg import (
     AttachedCollisionObject,
     CollisionObject,
@@ -18,77 +21,104 @@ from moveit_msgs.msg import (
     PlanningSceneComponents,
 )
 from moveit_msgs.srv import ApplyPlanningScene, GetPlanningScene
-from shape_msgs.msg import SolidPrimitive
-from tf2_ros import Buffer, TransformException, TransformListener
 
+from shape_msgs.msg import (
+    Mesh,
+    MeshTriangle,
+    SolidPrimitive,
+)
+
+from tf2_ros import (
+    Buffer,
+    TransformException,
+    TransformListener,
+)
+
+
+try:
+    import trimesh
+except ImportError as exc:
+    raise ImportError(
+        "The Python package 'trimesh' is required for mesh geometry. "
+        "Install it in the ROS Python environment."
+    ) from exc
+
+
+# ============================================================================
+# Object and frame configuration
+# ============================================================================
 
 ROD_ID = "anodizing_rod"
+
 WORLD_FRAME = "world"
-DEFAULT_SUPPORT_FRAME = "base_footprint"
+
+# Temporary mobile fixture/support.
 DEFAULT_SUPPORT_LINK = "base_footprint"
-ATTACH_LINK = "anobot_grasp_frame"
+
+# Robot grasp reference.
+DEFAULT_ATTACH_LINK = "anobot_grasp_frame"
+
+
+# ============================================================================
+# Cylinder fallback geometry
+# ============================================================================
 
 ROD_LENGTH = 1.008
 ROD_RADIUS = 0.014
 
 
-# ---------------------------------------------------------------------------
-# Pose mathematics
-# ---------------------------------------------------------------------------
+# ============================================================================
+# Default mesh configuration
+# ============================================================================
 
-def quaternion_normalize(q):
+DEFAULT_MESH_PACKAGE = "anobot_scene"
+
+DEFAULT_MESH_RELATIVE_PATH = os.path.join(
+    "meshes",
+    "anodizing_load.STL",
+)
+
+# Use 0.001 for an STL exported in millimetres.
+# Use 1.0 for a mesh exported in metres.
+DEFAULT_MESH_SCALE = 0.001
+
+
+# ============================================================================
+# Quaternion and transform utilities
+#
+# A transform tuple is represented as:
+#
+#     (
+#         (translation_x, translation_y, translation_z),
+#         (quaternion_x, quaternion_y, quaternion_z, quaternion_w),
+#     )
+# ============================================================================
+
+def quaternion_normalize(quaternion):
+    x, y, z, w = quaternion
+
     norm = math.sqrt(
-        q[0] * q[0]
-        + q[1] * q[1]
-        + q[2] * q[2]
-        + q[3] * q[3]
+        x * x
+        + y * y
+        + z * z
+        + w * w
     )
 
     if norm < 1.0e-12:
         return 0.0, 0.0, 0.0, 1.0
 
     return (
-        q[0] / norm,
-        q[1] / norm,
-        q[2] / norm,
-        q[3] / norm,
+        x / norm,
+        y / norm,
+        z / norm,
+        w / norm,
     )
 
 
-def quaternion_conjugate(q):
-    return -q[0], -q[1], -q[2], q[3]
+def quaternion_conjugate(quaternion):
+    x, y, z, w = quaternion
 
-
-def quaternion_multiply(q1, q2):
-    x1, y1, z1, w1 = q1
-    x2, y2, z2, w2 = q2
-
-    return quaternion_normalize(
-        (
-            w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
-            w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
-            w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
-            w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
-        )
-    )
-
-
-def rotate_vector(q, vector):
-    q = quaternion_normalize(q)
-
-    vector_quaternion = (
-        vector[0],
-        vector[1],
-        vector[2],
-        0.0,
-    )
-
-    rotated = quaternion_multiply_raw(
-        quaternion_multiply_raw(q, vector_quaternion),
-        quaternion_conjugate(q),
-    )
-
-    return rotated[0], rotated[1], rotated[2]
+    return -x, -y, -z, w
 
 
 def quaternion_multiply_raw(q1, q2):
@@ -100,6 +130,59 @@ def quaternion_multiply_raw(q1, q2):
         w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
         w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
         w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
+    )
+
+
+def quaternion_multiply(q1, q2):
+    return quaternion_normalize(
+        quaternion_multiply_raw(q1, q2)
+    )
+
+
+def rotate_vector(quaternion, vector):
+    quaternion = quaternion_normalize(
+        quaternion
+    )
+
+    vector_quaternion = (
+        vector[0],
+        vector[1],
+        vector[2],
+        0.0,
+    )
+
+    rotated = quaternion_multiply_raw(
+        quaternion_multiply_raw(
+            quaternion,
+            vector_quaternion,
+        ),
+        quaternion_conjugate(quaternion),
+    )
+
+    return (
+        rotated[0],
+        rotated[1],
+        rotated[2],
+    )
+
+
+def quaternion_from_rpy(roll, pitch, yaw):
+    cy = math.cos(yaw * 0.5)
+    sy = math.sin(yaw * 0.5)
+
+    cp = math.cos(pitch * 0.5)
+    sp = math.sin(pitch * 0.5)
+
+    cr = math.cos(roll * 0.5)
+    sr = math.sin(roll * 0.5)
+
+    return quaternion_normalize(
+        (
+            sr * cp * cy - cr * sp * sy,
+            cr * sp * cy + sr * cp * sy,
+            cr * cp * sy - sr * sp * cy,
+            cr * cp * cy + sr * sp * sy,
+        )
     )
 
 
@@ -141,9 +224,27 @@ def transform_msg_to_tuple(transform):
     return translation, rotation
 
 
+def transform_tuple_to_pose(transform):
+    translation, rotation = transform
+
+    pose = Pose()
+
+    pose.position.x = translation[0]
+    pose.position.y = translation[1]
+    pose.position.z = translation[2]
+
+    pose.orientation.x = rotation[0]
+    pose.orientation.y = rotation[1]
+    pose.orientation.z = rotation[2]
+    pose.orientation.w = rotation[3]
+
+    return pose
+
+
 def transform_compose(transform_a_b, transform_b_c):
     """
-    Compose:
+    Compose two transforms:
+
         T_a_c = T_a_b * T_b_c
     """
 
@@ -171,12 +272,16 @@ def transform_compose(transform_a_b, transform_b_c):
 
 def transform_inverse(transform_a_b):
     """
-    Return:
+    Invert a transform:
+
         T_b_a = inverse(T_a_b)
     """
 
     translation_a_b, rotation_a_b = transform_a_b
-    rotation_b_a = quaternion_conjugate(rotation_a_b)
+
+    rotation_b_a = quaternion_conjugate(
+        rotation_a_b
+    )
 
     negative_translation = (
         -translation_a_b[0],
@@ -192,76 +297,18 @@ def transform_inverse(transform_a_b):
     return translation_b_a, rotation_b_a
 
 
-def transform_tuple_to_pose(transform):
-    translation, rotation = transform
-
-    pose = Pose()
-
-    pose.position.x = translation[0]
-    pose.position.y = translation[1]
-    pose.position.z = translation[2]
-
-    pose.orientation.x = rotation[0]
-    pose.orientation.y = rotation[1]
-    pose.orientation.z = rotation[2]
-    pose.orientation.w = rotation[3]
-
-    return pose
-
-
-def quaternion_from_rpy(roll, pitch, yaw):
-    cy = math.cos(yaw * 0.5)
-    sy = math.sin(yaw * 0.5)
-    cp = math.cos(pitch * 0.5)
-    sp = math.sin(pitch * 0.5)
-    cr = math.cos(roll * 0.5)
-    sr = math.sin(roll * 0.5)
-
-    return quaternion_normalize(
-        (
-            sr * cp * cy - cr * sp * sy,
-            cr * sp * cy + sr * cp * sy,
-            cr * cp * sy - sr * sp * cy,
-            cr * cp * cy + sr * sp * sy,
-        )
-    )
-
+# ============================================================================
+# Rod scene manager
+# ============================================================================
 
 class RodSceneManager(Node):
 
     def __init__(self):
         super().__init__("rod_scene_manager")
 
-        self.declare_parameter("operation", "status")
+        self.loaded_mesh = None
 
-        # The initial rod pose is expressed in support_frame.
-        self.declare_parameter(
-            "support_frame",
-            DEFAULT_SUPPORT_FRAME,
-        )
-
-        self.declare_parameter(
-            "support_link",
-            DEFAULT_SUPPORT_LINK,
-        )
-
-        self.declare_parameter("rod_x", 0.0)
-        self.declare_parameter("rod_y", -0.50)
-        self.declare_parameter("rod_z", 0.90)
-
-        # A MoveIt cylinder is aligned along its local Z-axis.
-        # Pitch = pi / 2 makes it horizontal along the local X-axis.
-        self.declare_parameter("rod_roll", 0.0)
-        self.declare_parameter(
-            "rod_pitch",
-            math.pi / 2.0,
-        )
-        self.declare_parameter("rod_yaw", 0.0)
-
-        self.declare_parameter(
-            "attach_link",
-            ATTACH_LINK,
-        )
+        self.declare_manager_parameters()
 
         self.apply_client = self.create_client(
             ApplyPlanningScene,
@@ -274,6 +321,7 @@ class RodSceneManager(Node):
         )
 
         self.tf_buffer = Buffer()
+
         self.tf_listener = TransformListener(
             self.tf_buffer,
             self,
@@ -298,97 +346,199 @@ class RodSceneManager(Node):
                 "/get_planning_scene is unavailable"
             )
 
-        # Give the TF listener a brief opportunity to populate.
-        time.sleep(0.25)
+        # Give TransformListener time to receive the current TF graph.
+        time.sleep(0.5)
 
-        operation = (
-            self.get_parameter("operation")
-            .get_parameter_value()
-            .string_value
+        operation = self.get_string_parameter(
+            "operation"
         )
 
         if operation == "add":
             self.add_rod()
+
         elif operation == "attach":
             self.attach_rod_preserving_pose()
+
         elif operation == "place":
             self.place_rod_preserving_pose()
+
         elif operation == "stow":
             self.stow_rod_preserving_pose()
+
         elif operation == "remove":
             self.remove_rod()
+
         elif operation == "status":
             self.print_status()
+
         else:
             raise ValueError(
                 f"Unsupported operation '{operation}'. "
                 "Use add, attach, place, stow, remove, or status."
             )
 
-    # -----------------------------------------------------------------------
-    # Parameter helpers
-    # -----------------------------------------------------------------------
+    # ========================================================================
+    # Parameters
+    # ========================================================================
+
+    def declare_manager_parameters(self):
+        self.declare_parameter(
+            "operation",
+            "status",
+        )
+
+        self.declare_parameter(
+            "support_link",
+            DEFAULT_SUPPORT_LINK,
+        )
+
+        self.declare_parameter(
+            "attach_link",
+            DEFAULT_ATTACH_LINK,
+        )
+
+        # Initial pose relative to support_link.
+        self.declare_parameter("rod_x", 0.0)
+        self.declare_parameter("rod_y", -0.50)
+        self.declare_parameter("rod_z", 1.00)
+
+        self.declare_parameter("rod_roll", 0.0)
+        self.declare_parameter(
+            "rod_pitch",
+            math.pi / 2.0,
+        )
+        self.declare_parameter("rod_yaw", 0.0)
+
+        # Select "mesh" or "cylinder".
+        self.declare_parameter(
+            "geometry_type",
+            "mesh",
+        )
+
+        self.declare_parameter(
+            "mesh_package",
+            DEFAULT_MESH_PACKAGE,
+        )
+
+        self.declare_parameter(
+            "mesh_relative_path",
+            DEFAULT_MESH_RELATIVE_PATH,
+        )
+
+        self.declare_parameter(
+            "mesh_scale",
+            DEFAULT_MESH_SCALE,
+        )
+
+    def get_string_parameter(self, name):
+        return (
+            self.get_parameter(name)
+            .get_parameter_value()
+            .string_value
+        )
+
+    def get_double_parameter(self, name):
+        return (
+            self.get_parameter(name)
+            .get_parameter_value()
+            .double_value
+        )
+
+    def get_support_link(self):
+        return self.get_string_parameter(
+            "support_link"
+        )
 
     def get_attach_link(self):
-        return (
-            self.get_parameter("attach_link")
-            .get_parameter_value()
-            .string_value
+        return self.get_string_parameter(
+            "attach_link"
         )
 
-    def get_support_frame(self):
-        return (
-            self.get_parameter("support_frame")
-            .get_parameter_value()
-            .string_value
+    # ========================================================================
+    # Cleanup
+    # ========================================================================
+
+    def close(self):
+        """
+        Explicitly release the TF listener before node destruction.
+
+        This avoids the TransformListener destructor attempting to shut down
+        its executor after rclpy has already started destroying ROS handles.
+        """
+
+        listener = getattr(
+            self,
+            "tf_listener",
+            None,
         )
-    
-    def get_support_link(self):
-        return (
-        self.get_parameter("support_link")
-        .get_parameter_value()
-        .string_value
-    )
+
+        if listener is None:
+            return
+
+        try:
+            listener.unregister()
+        except Exception as exc:
+            self.get_logger().debug(
+                f"TF listener unregister returned: {exc}"
+            )
+
+        executor = getattr(
+            listener,
+            "executor",
+            None,
+        )
+
+        if executor is None:
+            executor = getattr(
+                listener,
+                "_executor",
+                None,
+            )
+
+        if executor is not None:
+            try:
+                executor.shutdown(
+                    timeout_sec=1.0
+                )
+            except TypeError:
+                try:
+                    executor.shutdown()
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+        self.tf_listener = None
+
+    # ========================================================================
+    # Common pose helpers
+    # ========================================================================
+
+    @staticmethod
+    def identity_pose():
+        pose = Pose()
+        pose.orientation.w = 1.0
+        return pose
 
     def get_initial_rod_pose(self):
         pose = Pose()
 
-        pose.position.x = (
-            self.get_parameter("rod_x")
-            .get_parameter_value()
-            .double_value
-        )
-        pose.position.y = (
-            self.get_parameter("rod_y")
-            .get_parameter_value()
-            .double_value
-        )
-        pose.position.z = (
-            self.get_parameter("rod_z")
-            .get_parameter_value()
-            .double_value
+        pose.position.x = self.get_double_parameter(
+            "rod_x"
         )
 
-        roll = (
-            self.get_parameter("rod_roll")
-            .get_parameter_value()
-            .double_value
+        pose.position.y = self.get_double_parameter(
+            "rod_y"
         )
-        pitch = (
-            self.get_parameter("rod_pitch")
-            .get_parameter_value()
-            .double_value
-        )
-        yaw = (
-            self.get_parameter("rod_yaw")
-            .get_parameter_value()
-            .double_value
+
+        pose.position.z = self.get_double_parameter(
+            "rod_z"
         )
 
         quaternion = quaternion_from_rpy(
-            roll,
-            pitch,
-            yaw,
+            self.get_double_parameter("rod_roll"),
+            self.get_double_parameter("rod_pitch"),
+            self.get_double_parameter("rod_yaw"),
         )
 
         pose.orientation.x = quaternion[0]
@@ -398,42 +548,229 @@ class RodSceneManager(Node):
 
         return pose
 
-    # -----------------------------------------------------------------------
-    # Rod geometry
-    # -----------------------------------------------------------------------
+    # ========================================================================
+    # Geometry
+    # ========================================================================
 
     @staticmethod
-    def make_rod_primitive():
-        rod = SolidPrimitive()
-        rod.type = SolidPrimitive.CYLINDER
+    def make_cylinder_geometry():
+        cylinder = SolidPrimitive()
+        cylinder.type = SolidPrimitive.CYLINDER
 
-        # Cylinder dimensions are [height, radius].
-        rod.dimensions = [
+        # MoveIt cylinder dimensions:
+        # [height, radius]
+        cylinder.dimensions = [
             ROD_LENGTH,
             ROD_RADIUS,
         ]
 
-        return rod
+        return cylinder
 
-    @staticmethod
-    def identity_pose():
-        pose = Pose()
-        pose.orientation.w = 1.0
-        return pose
+    def get_mesh_path(self):
+        mesh_package = self.get_string_parameter(
+            "mesh_package"
+        )
+
+        relative_path = self.get_string_parameter(
+            "mesh_relative_path"
+        )
+
+        package_share = get_package_share_directory(
+            mesh_package
+        )
+
+        mesh_path = os.path.join(
+            package_share,
+            relative_path,
+        )
+
+        if not os.path.isfile(mesh_path):
+            raise RuntimeError(
+                "Anodizing-load mesh does not exist: "
+                f"'{mesh_path}'"
+            )
+
+        return mesh_path
+
+    def get_mesh_scale(self):
+        scale = self.get_double_parameter(
+            "mesh_scale"
+        )
+
+        if scale <= 0.0:
+            raise RuntimeError(
+                "mesh_scale must be positive; "
+                f"received {scale}"
+            )
+
+        return scale
+
+    def load_mesh_from_file(
+        self,
+        file_path,
+        scale,
+    ):
+        """
+        Load a mesh and convert it into shape_msgs/Mesh.
+
+        process=False helps preserve the original CAD origin and geometry.
+        """
+
+        loaded = trimesh.load(
+            file_path,
+            force="mesh",
+            process=False,
+        )
+
+        if isinstance(loaded, trimesh.Scene):
+            geometries = [
+                geometry
+                for geometry in loaded.geometry.values()
+                if geometry is not None
+            ]
+
+            if not geometries:
+                raise RuntimeError(
+                    "Mesh scene contains no geometry: "
+                    f"'{file_path}'"
+                )
+
+            loaded = trimesh.util.concatenate(
+                geometries
+            )
+
+        if not isinstance(
+            loaded,
+            trimesh.Trimesh,
+        ):
+            raise RuntimeError(
+                "Unsupported mesh result for "
+                f"'{file_path}': "
+                f"{type(loaded).__name__}"
+            )
+
+        if len(loaded.vertices) == 0:
+            raise RuntimeError(
+                f"Mesh has no vertices: '{file_path}'"
+            )
+
+        if len(loaded.faces) == 0:
+            raise RuntimeError(
+                f"Mesh has no faces: '{file_path}'"
+            )
+
+        if loaded.faces.shape[1] != 3:
+            raise RuntimeError(
+                "MoveIt collision meshes require "
+                "triangulated faces"
+            )
+
+        mesh_message = Mesh()
+
+        for vertex in loaded.vertices:
+            point = Point()
+
+            point.x = float(vertex[0]) * scale
+            point.y = float(vertex[1]) * scale
+            point.z = float(vertex[2]) * scale
+
+            mesh_message.vertices.append(point)
+
+        for face in loaded.faces:
+            triangle = MeshTriangle()
+
+            triangle.vertex_indices = [
+                int(face[0]),
+                int(face[1]),
+                int(face[2]),
+            ]
+
+            mesh_message.triangles.append(
+                triangle
+            )
+
+        scaled_bounds = (
+            loaded.bounds * scale
+        )
+
+        dimensions = (
+            scaled_bounds[1]
+            - scaled_bounds[0]
+        )
+
+        self.get_logger().info(
+            "Loaded anodizing-load mesh: "
+            f"vertices={len(mesh_message.vertices)}, "
+            f"triangles={len(mesh_message.triangles)}, "
+            "dimensions="
+            f"({dimensions[0]:.4f}, "
+            f"{dimensions[1]:.4f}, "
+            f"{dimensions[2]:.4f}) m, "
+            f"scale={scale}, "
+            f"path='{file_path}'."
+        )
+
+        return mesh_message
+
+    def get_loaded_mesh(self):
+        if self.loaded_mesh is None:
+            self.loaded_mesh = self.load_mesh_from_file(
+                self.get_mesh_path(),
+                self.get_mesh_scale(),
+            )
+
+        return copy.deepcopy(
+            self.loaded_mesh
+        )
+
+    def populate_rod_geometry(
+        self,
+        collision_object,
+    ):
+        geometry_type = self.get_string_parameter(
+            "geometry_type"
+        ).lower()
+
+        if geometry_type == "mesh":
+            collision_object.meshes.append(
+                self.get_loaded_mesh()
+            )
+
+            collision_object.mesh_poses.append(
+                self.identity_pose()
+            )
+
+        elif geometry_type == "cylinder":
+            collision_object.primitives.append(
+                self.make_cylinder_geometry()
+            )
+
+            collision_object.primitive_poses.append(
+                self.identity_pose()
+            )
+
+        else:
+            raise RuntimeError(
+                "Unsupported geometry_type "
+                f"'{geometry_type}'. "
+                "Use 'mesh' or 'cylinder'."
+            )
 
     @staticmethod
     def make_rod_color():
         color = ObjectColor()
         color.id = ROD_ID
+
         color.color.r = 0.68
         color.color.g = 0.68
         color.color.b = 0.72
         color.color.a = 1.0
+
         return color
 
-    # -----------------------------------------------------------------------
+    # ========================================================================
     # Planning-scene queries
-    # -----------------------------------------------------------------------
+    # ========================================================================
 
     def query_scene(self):
         request = GetPlanningScene.Request()
@@ -444,7 +781,9 @@ class RodSceneManager(Node):
             | PlanningSceneComponents.ROBOT_STATE
         )
 
-        future = self.get_scene_client.call_async(request)
+        future = self.get_scene_client.call_async(
+            request
+        )
 
         rclpy.spin_until_future_complete(
             self,
@@ -454,32 +793,38 @@ class RodSceneManager(Node):
 
         if future.result() is None:
             raise RuntimeError(
-                "Timed out while querying the planning scene"
+                "Timed out while querying planning scene"
             )
 
         return future.result().scene
 
-    def find_world_rod(self, scene):
+    @staticmethod
+    def find_world_rod(scene):
         for collision_object in (
             scene.world.collision_objects
         ):
             if collision_object.id == ROD_ID:
-                return copy.deepcopy(collision_object)
+                return copy.deepcopy(
+                    collision_object
+                )
 
         return None
 
-    def find_attached_rod(self, scene):
+    @staticmethod
+    def find_attached_rod(scene):
         for attached_object in (
             scene.robot_state.attached_collision_objects
         ):
             if attached_object.object.id == ROD_ID:
-                return copy.deepcopy(attached_object)
+                return copy.deepcopy(
+                    attached_object
+                )
 
         return None
 
-    # -----------------------------------------------------------------------
-    # TF and object-pose conversion
-    # -----------------------------------------------------------------------
+    # ========================================================================
+    # TF helpers
+    # ========================================================================
 
     def lookup_transform_tuple(
         self,
@@ -487,16 +832,20 @@ class RodSceneManager(Node):
         source_frame,
     ):
         try:
-            transform_stamped = self.tf_buffer.lookup_transform(
-                target_frame,
-                source_frame,
-                Time(),
-                timeout=Duration(seconds=2.0),
+            transform_stamped = (
+                self.tf_buffer.lookup_transform(
+                    target_frame,
+                    source_frame,
+                    Time(),
+                    timeout=Duration(seconds=3.0),
+                )
             )
+
         except TransformException as exc:
             raise RuntimeError(
-                f"Could not transform from '{source_frame}' "
-                f"to '{target_frame}': {exc}"
+                f"Could not transform from "
+                f"'{source_frame}' to "
+                f"'{target_frame}': {exc}"
             ) from exc
 
         return transform_msg_to_tuple(
@@ -508,18 +857,10 @@ class RodSceneManager(Node):
         collision_object,
         target_frame,
     ):
-        """
-        Return T_target_object for a CollisionObject.
-
-        In the current MoveIt message format, CollisionObject.pose
-        represents the object's reference pose, while primitive_poses
-        and mesh_poses are local geometry poses.
-        """
-
-        source_frame = collision_object.header.frame_id
-
-        if not source_frame:
-            source_frame = WORLD_FRAME
+        source_frame = (
+            collision_object.header.frame_id
+            or WORLD_FRAME
+        )
 
         source_to_object = pose_to_transform_tuple(
             collision_object.pose
@@ -538,15 +879,21 @@ class RodSceneManager(Node):
             source_to_object,
         )
 
-    # -----------------------------------------------------------------------
-    # Apply and verify
-    # -----------------------------------------------------------------------
+    # ========================================================================
+    # Apply planning scene
+    # ========================================================================
 
-    def apply_scene(self, scene, description):
+    def apply_scene(
+        self,
+        scene,
+        description,
+    ):
         request = ApplyPlanningScene.Request()
         request.scene = scene
 
-        future = self.apply_client.call_async(request)
+        future = self.apply_client.call_async(
+            request
+        )
 
         rclpy.spin_until_future_complete(
             self,
@@ -554,56 +901,45 @@ class RodSceneManager(Node):
             timeout_sec=5.0,
         )
 
-        # Some previous tests showed that the update could be applied even
-        # when the immediate client result appeared unsuccessful. Therefore,
-        # methods below verify the resulting planning-scene state explicitly.
         if future.result() is None:
             self.get_logger().warning(
-                f"No immediate service response for '{description}'. "
-                "The resulting planning scene will be verified."
+                "No immediate service response for "
+                f"'{description}'. "
+                "The resulting planning scene will "
+                "be verified."
             )
+
         elif not future.result().success:
             self.get_logger().warning(
-                f"Service reported unsuccessful for '{description}'. "
-                "The resulting planning scene will be verified."
+                "The immediate service response for "
+                f"'{description}' was unsuccessful. "
+                "The resulting planning scene will "
+                "be verified."
             )
 
-        time.sleep(0.15)
+        time.sleep(0.20)
 
-    # -----------------------------------------------------------------------
-    # Operations
-    # -----------------------------------------------------------------------
+    # ========================================================================
+    # Add rod to mobile support
+    # ========================================================================
 
     def add_rod(self):
-        """
-        Add the rod as an object attached to the mobile manipulator.
-
-        The rod pose is expressed relative to support_link. Since it is
-        attached to a link in the robot model, it travels with the AGV.
-
-        This represents a rod resting in a loading fixture before pickup
-        by the manipulator.
-        """
-
         current_scene = self.query_scene()
 
-        existing_world_rod = self.find_world_rod(
-            current_scene
-        )
-        existing_attached_rod = self.find_attached_rod(
-            current_scene
-        )
-
-        if existing_world_rod is not None:
+        if self.find_world_rod(current_scene):
             raise RuntimeError(
-                "Cannot add loading rod: a world rod already exists. "
+                "Cannot add rod: a world rod already exists. "
                 "Run operation:=remove first."
             )
 
-        if existing_attached_rod is not None:
+        existing_attached = self.find_attached_rod(
+            current_scene
+        )
+
+        if existing_attached is not None:
             raise RuntimeError(
-                "Cannot add loading rod: a rod is already attached "
-                f"to '{existing_attached_rod.link_name}'. "
+                "Cannot add rod: rod is already attached "
+                f"to '{existing_attached.link_name}'. "
                 "Run operation:=remove first."
             )
 
@@ -614,25 +950,18 @@ class RodSceneManager(Node):
         rod_object.id = ROD_ID
         rod_object.operation = CollisionObject.ADD
 
-        # The rod pose is directly relative to the mobile support link.
+        # Object-level pose relative to mobile support.
         rod_object.pose = self.get_initial_rod_pose()
 
-        # Cylinder geometry is centered at the rod object frame.
-        rod_object.primitives.append(
-            self.make_rod_primitive()
-        )
-        rod_object.primitive_poses.append(
-            self.identity_pose()
+        # Add either mesh or cylinder geometry.
+        self.populate_rod_geometry(
+            rod_object
         )
 
-        attached_rod = AttachedCollisionObject()
-        attached_rod.link_name = support_link
-        attached_rod.object = rod_object
-
-        # Only the supporting link is considered an intentional contact.
-        # base_footprint itself has no collision geometry in your URDF,
-        # but keeping it here clearly documents the support relationship.
-        attached_rod.touch_links = [
+        attached = AttachedCollisionObject()
+        attached.link_name = support_link
+        attached.object = rod_object
+        attached.touch_links = [
             support_link,
         ]
 
@@ -641,7 +970,7 @@ class RodSceneManager(Node):
         scene.robot_state.is_diff = True
 
         scene.robot_state.attached_collision_objects.append(
-            attached_rod
+            attached
         )
 
         scene.object_colors.append(
@@ -653,31 +982,32 @@ class RodSceneManager(Node):
             "add rod to mobile loading support",
         )
 
-        verification_scene = self.query_scene()
+        verification = self.query_scene()
 
         verified_attached = self.find_attached_rod(
-            verification_scene
+            verification
         )
+
         verified_world = self.find_world_rod(
-            verification_scene
+            verification
         )
 
         if verified_attached is None:
             raise RuntimeError(
-                "Rod was not found under attached objects after add"
+                "Rod was not found under attached "
+                "objects after add"
             )
 
         if verified_world is not None:
             raise RuntimeError(
-                "Rod exists as both a world and attached object "
-                "after add"
+                "Rod exists as both world and attached "
+                "object after add"
             )
 
         if verified_attached.link_name != support_link:
             raise RuntimeError(
-                "Rod was added, but attached to unexpected link "
-                f"'{verified_attached.link_name}' instead of "
-                f"'{support_link}'"
+                "Rod was attached to unexpected link "
+                f"'{verified_attached.link_name}'"
             )
 
         pose = verified_attached.object.pose
@@ -695,20 +1025,11 @@ class RodSceneManager(Node):
             f"{pose.orientation.w:.4f})."
         )
 
+    # ========================================================================
+    # Transfer rod to robot gripper
+    # ========================================================================
+
     def attach_rod_preserving_pose(self):
-        """
-        Transfer the rod from its current state to the robot grasp frame
-        without changing its world pose.
-
-        Supported starting states:
-
-        1. Rod attached to the mobile support link.
-        2. Rod stored as a world collision object.
-
-        The resulting rod is attached to attach_link while preserving
-        any position or orientation mismatch between the gripper and rod.
-        """
-
         current_scene = self.query_scene()
 
         attach_link = self.get_attach_link()
@@ -716,43 +1037,36 @@ class RodSceneManager(Node):
         existing_attached = self.find_attached_rod(
             current_scene
         )
+
         existing_world = self.find_world_rod(
             current_scene
         )
-
-        # ---------------------------------------------------------------
-        # Case 1: rod is already attached to the manipulator.
-        # ---------------------------------------------------------------
 
         if (
             existing_attached is not None
             and existing_attached.link_name == attach_link
         ):
             self.get_logger().info(
-                f"Rod is already attached to '{attach_link}'."
+                f"Rod is already attached to "
+                f"'{attach_link}'."
             )
             return
-
-        # ---------------------------------------------------------------
-        # Determine current rod pose in world.
-        # ---------------------------------------------------------------
 
         if existing_attached is not None:
             source_link = existing_attached.link_name
             source_object = existing_attached.object
 
-            # Pose of rod relative to its current support link.
             source_to_rod = pose_to_transform_tuple(
                 source_object.pose
             )
 
-            # Pose of current support link in world.
-            world_to_source = self.lookup_transform_tuple(
-                WORLD_FRAME,
-                source_link,
+            world_to_source = (
+                self.lookup_transform_tuple(
+                    WORLD_FRAME,
+                    source_link,
+                )
             )
 
-            # Current pose of rod in world.
             world_to_rod = transform_compose(
                 world_to_source,
                 source_to_rod,
@@ -767,10 +1081,11 @@ class RodSceneManager(Node):
             source_link = None
             source_object = existing_world
 
-            # Current rod pose in world.
-            world_to_rod = self.get_object_pose_in_frame(
-                existing_world,
-                WORLD_FRAME,
+            world_to_rod = (
+                self.get_object_pose_in_frame(
+                    existing_world,
+                    WORLD_FRAME,
+                )
             )
 
             self.get_logger().info(
@@ -780,16 +1095,9 @@ class RodSceneManager(Node):
 
         else:
             raise RuntimeError(
-                "Cannot attach: rod is neither on the mobile "
-                "support nor present in the world"
+                "Cannot attach: rod is neither on the "
+                "mobile support nor present in the world"
             )
-
-        # ---------------------------------------------------------------
-        # Calculate rod pose relative to the robot grasp link.
-        #
-        # T_attach_rod =
-        #     inverse(T_world_attach) * T_world_rod
-        # ---------------------------------------------------------------
 
         world_to_attach = self.lookup_transform_tuple(
             WORLD_FRAME,
@@ -805,11 +1113,9 @@ class RodSceneManager(Node):
             world_to_rod,
         )
 
-        # ---------------------------------------------------------------
-        # Create the new attached rod.
-        # ---------------------------------------------------------------
-
-        rod_object = copy.deepcopy(source_object)
+        rod_object = copy.deepcopy(
+            source_object
+        )
 
         rod_object.header.frame_id = attach_link
         rod_object.pose = transform_tuple_to_pose(
@@ -820,7 +1126,6 @@ class RodSceneManager(Node):
         new_attached = AttachedCollisionObject()
         new_attached.link_name = attach_link
         new_attached.object = rod_object
-
         new_attached.touch_links = [
             attach_link,
             "anobot_tool_link",
@@ -831,85 +1136,82 @@ class RodSceneManager(Node):
         scene.is_diff = True
         scene.robot_state.is_diff = True
 
-        # ---------------------------------------------------------------
-        # Remove the old representation.
-        # ---------------------------------------------------------------
-
         if existing_attached is not None:
-            remove_old_object = CollisionObject()
-            remove_old_object.id = ROD_ID
-            remove_old_object.operation = (
+            remove_object = CollisionObject()
+            remove_object.id = ROD_ID
+            remove_object.operation = (
                 CollisionObject.REMOVE
             )
 
-            remove_old_attached = AttachedCollisionObject()
-            remove_old_attached.link_name = (
+            remove_attached = AttachedCollisionObject()
+            remove_attached.link_name = (
                 existing_attached.link_name
             )
-            remove_old_attached.object = (
-                remove_old_object
-            )
+            remove_attached.object = remove_object
 
             scene.robot_state.attached_collision_objects.append(
-                remove_old_attached
+                remove_attached
             )
 
         if existing_world is not None:
             remove_world = CollisionObject()
-            remove_world.header.frame_id = WORLD_FRAME
+            remove_world.header.frame_id = (
+                existing_world.header.frame_id
+                or WORLD_FRAME
+            )
             remove_world.id = ROD_ID
-            remove_world.operation = CollisionObject.REMOVE
+            remove_world.operation = (
+                CollisionObject.REMOVE
+            )
 
             scene.world.collision_objects.append(
                 remove_world
             )
 
-        # Append removal before addition so the final state has one rod.
+        # Removal entries are sent before replacement attachment.
         scene.robot_state.attached_collision_objects.append(
             new_attached
         )
 
         self.apply_scene(
             scene,
-            "transfer rod to grasp frame while preserving pose",
+            "transfer rod to grasp frame "
+            "while preserving pose",
         )
 
-        # ---------------------------------------------------------------
-        # Verify resulting state.
-        # ---------------------------------------------------------------
-
-        verification_scene = self.query_scene()
+        verification = self.query_scene()
 
         verified_attached = self.find_attached_rod(
-            verification_scene
+            verification
         )
+
         verified_world = self.find_world_rod(
-            verification_scene
+            verification
         )
 
         if verified_attached is None:
             raise RuntimeError(
-                "Rod was not found under attached objects "
-                "after attachment transfer"
+                "Rod was not found under attached "
+                "objects after transfer"
             )
 
         if verified_attached.link_name != attach_link:
             raise RuntimeError(
                 "Rod remains attached to unexpected link "
-                f"'{verified_attached.link_name}' instead of "
-                f"'{attach_link}'"
+                f"'{verified_attached.link_name}'"
             )
 
         if verified_world is not None:
             raise RuntimeError(
-                "Rod exists as both world and attached object"
+                "Rod exists as both world and attached "
+                "object after transfer"
             )
 
         pose = verified_attached.object.pose
 
         self.get_logger().info(
-            "Rod transferred to grasp frame without snapping. "
-            "Relative rod pose in grasp frame: "
+            "Rod transferred to grasp frame without "
+            "snapping. Relative pose: "
             f"xyz=({pose.position.x:.4f}, "
             f"{pose.position.y:.4f}, "
             f"{pose.position.z:.4f}), "
@@ -918,6 +1220,10 @@ class RodSceneManager(Node):
             f"{pose.orientation.z:.4f}, "
             f"{pose.orientation.w:.4f})."
         )
+
+    # ========================================================================
+    # Place rod into world
+    # ========================================================================
 
     def place_rod_preserving_pose(self):
         current_scene = self.query_scene()
@@ -932,19 +1238,15 @@ class RodSceneManager(Node):
             )
 
         attached_object = attached_rod.object
-        attached_frame = attached_rod.link_name
+        attached_frame = (
+            attached_rod.link_name
+            or attached_object.header.frame_id
+        )
 
-        if not attached_frame:
-            attached_frame = (
-                attached_object.header.frame_id
-            )
-
-        # T_attached-frame_rod
         attached_to_rod = pose_to_transform_tuple(
             attached_object.pose
         )
 
-        # T_world_attached-frame
         world_to_attached = (
             self.lookup_transform_tuple(
                 WORLD_FRAME,
@@ -952,13 +1254,15 @@ class RodSceneManager(Node):
             )
         )
 
-        # T_world_rod
         world_to_rod = transform_compose(
             world_to_attached,
             attached_to_rod,
         )
 
-        world_rod = copy.deepcopy(attached_object)
+        world_rod = copy.deepcopy(
+            attached_object
+        )
+
         world_rod.header.frame_id = WORLD_FRAME
         world_rod.pose = transform_tuple_to_pose(
             world_to_rod
@@ -967,7 +1271,9 @@ class RodSceneManager(Node):
 
         remove_object = CollisionObject()
         remove_object.id = ROD_ID
-        remove_object.operation = CollisionObject.REMOVE
+        remove_object.operation = (
+            CollisionObject.REMOVE
+        )
 
         remove_attached = AttachedCollisionObject()
         remove_attached.link_name = attached_frame
@@ -980,9 +1286,11 @@ class RodSceneManager(Node):
         scene.robot_state.attached_collision_objects.append(
             remove_attached
         )
+
         scene.world.collision_objects.append(
             world_rod
         )
+
         scene.object_colors.append(
             self.make_rod_color()
         )
@@ -992,13 +1300,14 @@ class RodSceneManager(Node):
             "place rod while preserving pose",
         )
 
-        verification_scene = self.query_scene()
+        verification = self.query_scene()
 
         verified_world = self.find_world_rod(
-            verification_scene
+            verification
         )
+
         verified_attached = self.find_attached_rod(
-            verification_scene
+            verification
         )
 
         if verified_world is None:
@@ -1025,24 +1334,11 @@ class RodSceneManager(Node):
             f"{pose.orientation.w:.4f})."
         )
 
+    # ========================================================================
+    # Return rod to mobile support
+    # ========================================================================
+
     def stow_rod_preserving_pose(self):
-        """
-        Transfer the rod to the mobile-manipulator loading support without
-        changing its current world pose.
-
-        Normal starting state:
-            Rod attached to anobot_grasp_frame.
-
-        Also supported:
-            Rod currently present as a world collision object.
-
-        Final state:
-            Rod attached to support_link and moving together with the AGV.
-
-        No snapping is performed. Any position or orientation mismatch
-        relative to the loading support is retained.
-        """
-
         current_scene = self.query_scene()
 
         support_link = self.get_support_link()
@@ -1055,40 +1351,31 @@ class RodSceneManager(Node):
             current_scene
         )
 
-        # ---------------------------------------------------------------
-        # Rod is already on the mobile support.
-        # ---------------------------------------------------------------
-
         if (
             existing_attached is not None
             and existing_attached.link_name == support_link
         ):
             self.get_logger().info(
-                f"Rod is already stowed on '{support_link}'."
+                f"Rod is already stowed on "
+                f"'{support_link}'."
             )
             return
-
-        # ---------------------------------------------------------------
-        # Determine the rod's current pose in the world frame.
-        # ---------------------------------------------------------------
 
         if existing_attached is not None:
             source_link = existing_attached.link_name
             source_object = existing_attached.object
 
-            # T_source_rod
             source_to_rod = pose_to_transform_tuple(
                 source_object.pose
             )
 
-            # T_world_source
-            world_to_source = self.lookup_transform_tuple(
-                WORLD_FRAME,
-                source_link,
+            world_to_source = (
+                self.lookup_transform_tuple(
+                    WORLD_FRAME,
+                    source_link,
+                )
             )
 
-            # T_world_rod =
-            #     T_world_source * T_source_rod
             world_to_rod = transform_compose(
                 world_to_source,
                 source_to_rod,
@@ -1104,30 +1391,23 @@ class RodSceneManager(Node):
             source_link = None
             source_object = existing_world
 
-            # Obtain T_world_rod, accounting for the object's
-            # current header frame.
-            world_to_rod = self.get_object_pose_in_frame(
-                existing_world,
-                WORLD_FRAME,
+            world_to_rod = (
+                self.get_object_pose_in_frame(
+                    existing_world,
+                    WORLD_FRAME,
+                )
             )
 
             self.get_logger().info(
-                "Transferring rod from the world to mobile support "
-                f"'{support_link}'."
+                "Transferring rod from world to "
+                f"mobile support '{support_link}'."
             )
 
         else:
             raise RuntimeError(
-                "Cannot stow: rod is neither attached to the "
-                "gripper nor present in the world"
+                "Cannot stow: rod is neither attached "
+                "nor present in world"
             )
-
-        # ---------------------------------------------------------------
-        # Calculate the rod pose relative to the mobile support link.
-        #
-        # T_support_rod =
-        #     inverse(T_world_support) * T_world_rod
-        # ---------------------------------------------------------------
 
         world_to_support = self.lookup_transform_tuple(
             WORLD_FRAME,
@@ -1143,10 +1423,6 @@ class RodSceneManager(Node):
             world_to_rod,
         )
 
-        # ---------------------------------------------------------------
-        # Construct the new support-attached rod.
-        # ---------------------------------------------------------------
-
         stowed_object = copy.deepcopy(
             source_object
         )
@@ -1160,11 +1436,6 @@ class RodSceneManager(Node):
         stowed_attached = AttachedCollisionObject()
         stowed_attached.link_name = support_link
         stowed_attached.object = stowed_object
-
-        # Only support_link is intentionally allowed to touch the rod.
-        #
-        # With the present model base_footprint has no collision
-        # geometry, but this documents the ownership relationship.
         stowed_attached.touch_links = [
             support_link,
         ]
@@ -1173,27 +1444,21 @@ class RodSceneManager(Node):
         scene.is_diff = True
         scene.robot_state.is_diff = True
 
-        # ---------------------------------------------------------------
-        # Remove the rod's previous representation.
-        # ---------------------------------------------------------------
-
         if existing_attached is not None:
-            remove_old_object = CollisionObject()
-            remove_old_object.id = ROD_ID
-            remove_old_object.operation = (
+            remove_object = CollisionObject()
+            remove_object.id = ROD_ID
+            remove_object.operation = (
                 CollisionObject.REMOVE
             )
 
-            remove_old_attached = AttachedCollisionObject()
-            remove_old_attached.link_name = (
+            remove_attached = AttachedCollisionObject()
+            remove_attached.link_name = (
                 existing_attached.link_name
             )
-            remove_old_attached.object = (
-                remove_old_object
-            )
+            remove_attached.object = remove_object
 
             scene.robot_state.attached_collision_objects.append(
-                remove_old_attached
+                remove_attached
             )
 
         if existing_world is not None:
@@ -1203,13 +1468,14 @@ class RodSceneManager(Node):
                 or WORLD_FRAME
             )
             remove_world.id = ROD_ID
-            remove_world.operation = CollisionObject.REMOVE
+            remove_world.operation = (
+                CollisionObject.REMOVE
+            )
 
             scene.world.collision_objects.append(
                 remove_world
             )
 
-        # Removal entries are added before the replacement attachment.
         scene.robot_state.attached_collision_objects.append(
             stowed_attached
         )
@@ -1220,48 +1486,45 @@ class RodSceneManager(Node):
 
         self.apply_scene(
             scene,
-            "stow rod on mobile support while preserving pose",
+            "stow rod on mobile support while "
+            "preserving pose",
         )
 
-        # ---------------------------------------------------------------
-        # Verify the final planning-scene state.
-        # ---------------------------------------------------------------
-
-        verification_scene = self.query_scene()
+        verification = self.query_scene()
 
         verified_attached = self.find_attached_rod(
-            verification_scene
+            verification
         )
 
         verified_world = self.find_world_rod(
-            verification_scene
+            verification
         )
 
         if verified_attached is None:
             raise RuntimeError(
-                "Rod was not found under attached objects "
-                "after stowing"
+                "Rod was not found under attached "
+                "objects after stowing"
             )
 
         if verified_attached.link_name != support_link:
             raise RuntimeError(
                 "Rod was stowed on unexpected link "
-                f"'{verified_attached.link_name}' instead of "
-                f"'{support_link}'"
+                f"'{verified_attached.link_name}'"
             )
 
         if verified_world is not None:
             raise RuntimeError(
-                "Rod exists as both a world object and an "
-                "attached object after stowing"
+                "Rod exists as both world and attached "
+                "object after stowing"
             )
 
         pose = verified_attached.object.pose
 
         self.get_logger().info(
-            "Rod stowed on mobile support without snapping. "
+            "Rod stowed on mobile support without "
+            "snapping. "
             f"Support link: '{support_link}'. "
-            "Relative rod pose: "
+            "Relative pose: "
             f"xyz=({pose.position.x:.4f}, "
             f"{pose.position.y:.4f}, "
             f"{pose.position.z:.4f}), "
@@ -1271,15 +1534,30 @@ class RodSceneManager(Node):
             f"{pose.orientation.w:.4f})."
         )
 
+    # ========================================================================
+    # Remove rod from all possible states
+    # ========================================================================
+
     def remove_rod(self):
         current_scene = self.query_scene()
 
         existing_world = self.find_world_rod(
             current_scene
         )
+
         existing_attached = self.find_attached_rod(
             current_scene
         )
+
+        if (
+            existing_world is None
+            and existing_attached is None
+        ):
+            self.get_logger().info(
+                "Rod is already absent from the "
+                "planning scene."
+            )
+            return
 
         scene = PlanningScene()
         scene.is_diff = True
@@ -1292,16 +1570,18 @@ class RodSceneManager(Node):
                 or WORLD_FRAME
             )
             remove_world.id = ROD_ID
-            remove_world.operation = CollisionObject.REMOVE
+            remove_world.operation = (
+                CollisionObject.REMOVE
+            )
 
             scene.world.collision_objects.append(
                 remove_world
             )
 
         if existing_attached is not None:
-            remove_attached_object = CollisionObject()
-            remove_attached_object.id = ROD_ID
-            remove_attached_object.operation = (
+            remove_object = CollisionObject()
+            remove_object.id = ROD_ID
+            remove_object.operation = (
                 CollisionObject.REMOVE
             )
 
@@ -1309,36 +1589,25 @@ class RodSceneManager(Node):
             remove_attached.link_name = (
                 existing_attached.link_name
             )
-            remove_attached.object = (
-                remove_attached_object
-            )
+            remove_attached.object = remove_object
 
             scene.robot_state.attached_collision_objects.append(
                 remove_attached
             )
-
-        if (
-            existing_world is None
-            and existing_attached is None
-        ):
-            self.get_logger().info(
-                "Rod is already absent from the planning scene."
-            )
-            return
 
         self.apply_scene(
             scene,
             "remove rod",
         )
 
-        verification_scene = self.query_scene()
+        verification = self.query_scene()
 
-        if self.find_world_rod(verification_scene):
+        if self.find_world_rod(verification):
             raise RuntimeError(
                 "World rod still exists after remove"
             )
 
-        if self.find_attached_rod(verification_scene):
+        if self.find_attached_rod(verification):
             raise RuntimeError(
                 "Attached rod still exists after remove"
             )
@@ -1347,31 +1616,55 @@ class RodSceneManager(Node):
             "Rod removed from planning scene."
         )
 
+    # ========================================================================
+    # Status
+    # ========================================================================
+
     def print_status(self):
         scene = self.query_scene()
 
-        world_rod = self.find_world_rod(scene)
-        attached_rod = self.find_attached_rod(scene)
+        world_rod = self.find_world_rod(
+            scene
+        )
+
+        attached_rod = self.find_attached_rod(
+            scene
+        )
+
+        support_link = self.get_support_link()
+        attach_link = self.get_attach_link()
 
         if attached_rod is not None:
             pose = attached_rod.object.pose
-            support_link = self.get_support_link()
-            attach_link = self.get_attach_link()
 
             if attached_rod.link_name == support_link:
                 state_name = "ON_MOBILE_SUPPORT"
+
             elif attached_rod.link_name == attach_link:
                 state_name = "ATTACHED_TO_GRIPPER"
+
             else:
-                state_name = "ATTACHED_TO_UNKNOWN_LINK"
+                state_name = (
+                    "ATTACHED_TO_UNKNOWN_LINK"
+                )
+
+            geometry_description = (
+                self.describe_geometry(
+                    attached_rod.object
+                )
+            )
 
             self.get_logger().info(
                 f"Rod state: {state_name}; "
-                f"attached to '{attached_rod.link_name}', "
-                f"relative xyz=({pose.position.x:.4f}, "
+                f"attached to "
+                f"'{attached_rod.link_name}', "
+                f"geometry={geometry_description}, "
+                f"relative xyz="
+                f"({pose.position.x:.4f}, "
                 f"{pose.position.y:.4f}, "
                 f"{pose.position.z:.4f}), "
-                f"quaternion=({pose.orientation.x:.4f}, "
+                f"quaternion="
+                f"({pose.orientation.x:.4f}, "
                 f"{pose.orientation.y:.4f}, "
                 f"{pose.orientation.z:.4f}, "
                 f"{pose.orientation.w:.4f})."
@@ -1380,13 +1673,21 @@ class RodSceneManager(Node):
         elif world_rod is not None:
             pose = world_rod.pose
 
+            geometry_description = (
+                self.describe_geometry(
+                    world_rod
+                )
+            )
+
             self.get_logger().info(
                 "Rod state: PLACED_IN_WORLD; "
                 f"frame='{world_rod.header.frame_id}', "
+                f"geometry={geometry_description}, "
                 f"xyz=({pose.position.x:.4f}, "
                 f"{pose.position.y:.4f}, "
                 f"{pose.position.z:.4f}), "
-                f"quaternion=({pose.orientation.x:.4f}, "
+                f"quaternion="
+                f"({pose.orientation.x:.4f}, "
                 f"{pose.orientation.y:.4f}, "
                 f"{pose.orientation.z:.4f}, "
                 f"{pose.orientation.w:.4f})."
@@ -1397,48 +1698,69 @@ class RodSceneManager(Node):
                 "Rod state: NOT_PRESENT."
             )
 
-    def close(self):
-        """
-        Explicitly stop and release the TF listener before destroying
-        the ROS node and shutting down rclpy.
-        """
-        if getattr(self, "tf_listener", None) is None:
-            return
-        listener = self.tf_listener
-        try:
-            listener.unregister()
-        except Exception as exc:
-            self.get_logger().warning(f"TF listener unregister warning: {exc}")
-        # With spin_thread=True, TransformListener owns an internal executor.
-        # Shut it down before destroying the parent node.
-        executor = getattr(listener, "executor", None)
-        if executor is not None:
-            try:
-                executor.shutdown(timeout_sec=1.0)
-            except Exception as exc:
-                self.get_logger().warning(f"TF listener executor shutdown warning: {exc}")
-        self.tf_listener = None
+    @staticmethod
+    def describe_geometry(collision_object):
+        mesh_count = len(
+            collision_object.meshes
+        )
 
+        primitive_count = len(
+            collision_object.primitives
+        )
+
+        if mesh_count > 0:
+            total_vertices = sum(
+                len(mesh.vertices)
+                for mesh in collision_object.meshes
+            )
+
+            total_triangles = sum(
+                len(mesh.triangles)
+                for mesh in collision_object.meshes
+            )
+
+            return (
+                f"mesh[{mesh_count}], "
+                f"vertices={total_vertices}, "
+                f"triangles={total_triangles}"
+            )
+
+        if primitive_count > 0:
+            return (
+                f"primitive[{primitive_count}]"
+            )
+
+        return "none"
+
+
+# ============================================================================
+# Main
+# ============================================================================
 
 def main(args=None):
     rclpy.init(args=args)
 
     node = None
+    error_node = None
 
     try:
         node = RodSceneManager()
-    except Exception as exc:
-        error_node = None
 
+    except Exception as exc:
         try:
             if rclpy.ok():
                 error_node = rclpy.create_node(
                     "rod_scene_manager_error"
                 )
-                error_node.get_logger().error(str(exc))
+
+                error_node.get_logger().error(
+                    str(exc)
+                )
+
         finally:
             if error_node is not None:
                 error_node.destroy_node()
+
     finally:
         if node is not None:
             node.close()
