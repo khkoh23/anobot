@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find anobot_description)/urdf/anobot_agv.xacro"/>
+  <xacro:include filename="$(find anobot_description)/urdf/anobot_ur.xacro"/>
+  <xacro:include filename="$(find anobot_description)/urdf/anobot_tool_mount.xacro"/>
+  <xacro:include filename="$(find anobot_description)/urdf/anobot_end_effector.xacro"/>
+  <xacro:include filename="$(find realsense2_description)/urdf/_d435i.urdf.xacro"/>
+
+  <xacro:macro name="anobot" params="
+    ur_type
+    tf_prefix
+    joint_limits_parameters_file
+    kinematics_parameters_file
+    physical_parameters_file
+    visual_parameters_file
+  ">
+
+    <material name="dark_grey"><color rgba="0.25 0.25 0.25 1"/></material>
+    <material name="grey"><color rgba="0.5 0.5 0.5 1"/></material>
+    <material name="white"><color rgba="1 1 1 1"/></material>
+    <material name="cobalt_blue"><color rgba="0 0.25 0.76 1"/></material>
+
+    <xacro:anobot_agv/>
+
+    <xacro:anobot_ur
+      parent="robot_mount"
+      ur_type="${ur_type}"
+      tf_prefix="${tf_prefix}"
+      joint_limits_parameters_file="${joint_limits_parameters_file}"
+      kinematics_parameters_file="${kinematics_parameters_file}"
+      physical_parameters_file="${physical_parameters_file}"
+      visual_parameters_file="${visual_parameters_file}">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </xacro:anobot_ur>
+
+    <xacro:anobot_tool_mount
+      parent="${tf_prefix}tool0"
+      mount_link="tool_mount"
+      camera_mount_link="camera_mount"
+      end_effector_mount_link="end_effector_mount"
+      mount_yaw="0.0"
+      camera_pitch_offset="${6.0 * pi / 180.0}"/>
+
+    <xacro:sensor_d435i
+      parent="camera_mount"
+      name="camera"
+      use_nominal_extrinsics="false">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </xacro:sensor_d435i>
+
+    <xacro:anobot_end_effector
+      parent="end_effector_mount"
+      tool_link="anobot_tool_link"
+      grasp_frame="anobot_grasp_frame">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </xacro:anobot_end_effector>
+
+  </xacro:macro>
+
+</robot>

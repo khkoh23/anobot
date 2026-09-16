@@ -53,7 +53,7 @@
       </collision>
     </link>
 
-    <link name="dummy_estop">
+    <link name="estop_link">
       <visual>
         <geometry>
           <mesh filename="package://anobot_description/meshes/estop.dae" scale="1 1 1"/>
@@ -78,16 +78,18 @@
       <origin xyz="0 0 ${agv_height/2 + body_height/2}" rpy="0 0 0"/>
     </joint>
 
-    <joint name="body_link_to_dummy_estop" type="fixed">
+    <joint name="estop_joint" type="fixed">
       <parent link="body_link"/>
-      <child link="dummy_estop"/>
-      <origin xyz="0 ${-body_width/2 + 0.030} ${body_height/2 - 0.050}" rpy="0 0 3.1416"/>
+      <child link="estop_link"/>
+      <!-- <origin xyz="0 ${-body_width/2.0 + 0.030} ${body_height/2.0 - 0.050}" rpy="0 0 ${pi}"/> -->
+      <origin xyz="0 ${body_width/2.0 - 0.030} ${body_height/2.0 - 0.050}" rpy="0 0 0"/>
     </joint>
 
     <joint name="body_link_to_robot_mount" type="fixed">
       <parent link="body_link"/>
       <child link="robot_mount"/>
-      <origin xyz="0 0 ${body_height/2}" rpy="0 0 -1.5708"/>
+      <!-- <origin xyz="0 0 ${body_height/2.0}" rpy="0 0 ${-pi/2.0}"/> -->
+      <origin xyz="0 0 ${body_height/2.0}" rpy="0 0 ${-pi}"/>
     </joint>
 
 

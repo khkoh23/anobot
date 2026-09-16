@@ -6,6 +6,7 @@
   <xacro:macro name="anobot_ur" params="
     parent
     ur_type
+    tf_prefix
     joint_limits_parameters_file
     kinematics_parameters_file
     physical_parameters_file
@@ -15,7 +16,7 @@
 
     <xacro:ur_robot
       name="${ur_type}"
-      tf_prefix="${ur_type}_"
+      tf_prefix="${tf_prefix}"
       parent="${parent}"
       joint_limits_parameters_file="${joint_limits_parameters_file}"
       kinematics_parameters_file="${kinematics_parameters_file}"

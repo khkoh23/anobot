@@ -3,7 +3,8 @@ Panels:
     Help Height: 87
     Name: Displays
     Property Tree Widget:
-      Expanded: ~
+      Expanded:
+        - /RobotModel1/Status1
       Splitter Ratio: 0.5
     Tree Height: 389
   - Class: rviz_common/Views
@@ -50,22 +51,47 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        d405:
+        anobot_grasp_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        anobot_tool_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        dummy_coil:
+        base_footprint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        base_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        dummy_head:
+        body_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        fts300s:
+        camera_bottom_screw_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        camera_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        camera_mount:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        end_effector_mount:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        estop_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -74,79 +100,66 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        table:
+        tool_mount:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        uc4:
+        ur_base:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        ur_base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        ur_base_link_inertia:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        ur10e_base:
+        ur_flange:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        ur10e_base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        ur10e_base_link_inertia:
+        ur_forearm_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        ur10e_flange:
+        ur_ft_frame:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        ur10e_forearm_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        ur10e_ft_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        ur10e_shoulder_link:
+        ur_shoulder_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        ur10e_tcp:
+        ur_tool0:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        ur10e_tool0:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        ur10e_upper_arm_link:
+        ur_upper_arm_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        ur10e_wrist_1_link:
+        ur_wrist_1_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        ur10e_wrist_2_link:
+        ur_wrist_2_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        ur10e_wrist_3_link:
+        ur_wrist_3_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        world:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
       Mass Properties:
         Inertia: false
         Mass: false
@@ -162,47 +175,53 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        d405:
+        anobot_grasp_frame:
           Value: true
-        dummy_coil:
+        anobot_tool_link:
           Value: true
-        dummy_head:
+        base_footprint:
           Value: true
-        fts300s:
+        base_link:
+          Value: true
+        body_link:
+          Value: true
+        camera_bottom_screw_frame:
+          Value: true
+        camera_link:
+          Value: true
+        camera_mount:
+          Value: true
+        end_effector_mount:
+          Value: true
+        estop_link:
           Value: true
         robot_mount:
           Value: true
-        table:
+        tool_mount:
           Value: true
-        uc4:
+        ur_base:
           Value: true
-        ur10e_base:
+        ur_base_link:
           Value: true
-        ur10e_base_link:
+        ur_base_link_inertia:
           Value: true
-        ur10e_base_link_inertia:
+        ur_flange:
           Value: true
-        ur10e_flange:
+        ur_forearm_link:
           Value: true
-        ur10e_forearm_link:
+        ur_ft_frame:
           Value: true
-        ur10e_ft_frame:
+        ur_shoulder_link:
           Value: true
-        ur10e_shoulder_link:
+        ur_tool0:
           Value: true
-        ur10e_tcp:
+        ur_upper_arm_link:
           Value: true
-        ur10e_tool0:
+        ur_wrist_1_link:
           Value: true
-        ur10e_upper_arm_link:
+        ur_wrist_2_link:
           Value: true
-        ur10e_wrist_1_link:
-          Value: true
-        ur10e_wrist_2_link:
-          Value: true
-        ur10e_wrist_3_link:
-          Value: true
-        world:
+        ur_wrist_3_link:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -210,39 +229,41 @@ Visualization Manager:
       Show Axes: true
       Show Names: false
       Tree:
-        world:
-          table:
-            dummy_head:
-              {}
-            robot_mount:
-              ur10e_base_link:
-                ur10e_base:
-                  {}
-                ur10e_base_link_inertia:
-                  ur10e_shoulder_link:
-                    ur10e_upper_arm_link:
-                      ur10e_forearm_link:
-                        ur10e_wrist_1_link:
-                          ur10e_wrist_2_link:
-                            ur10e_wrist_3_link:
-                              ur10e_flange:
-                                ur10e_tool0:
-                                  fts300s:
-                                    d405:
-                                      {}
-                                    dummy_coil:
-                                      ur10e_tcp:
-                                        {}
-                                    uc4:
-                                      {}
-                              ur10e_ft_frame:
-                                {}
+        base_footprint:
+          base_link:
+            body_link:
+              estop_link:
+                {}
+              robot_mount:
+                ur_base_link:
+                  ur_base:
+                    {}
+                  ur_base_link_inertia:
+                    ur_shoulder_link:
+                      ur_upper_arm_link:
+                        ur_forearm_link:
+                          ur_wrist_1_link:
+                            ur_wrist_2_link:
+                              ur_wrist_3_link:
+                                ur_flange:
+                                  ur_tool0:
+                                    tool_mount:
+                                      camera_mount:
+                                        camera_bottom_screw_frame:
+                                          camera_link:
+                                            {}
+                                      end_effector_mount:
+                                        anobot_tool_link:
+                                          anobot_grasp_frame:
+                                            {}
+                                ur_ft_frame:
+                                  {}
       Update Interval: 0
       Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: world
+    Fixed Frame: base_footprint
     Frame Rate: 30
   Name: root
   Tools:
@@ -254,25 +275,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 3.289311408996582
+      Distance: 5.550053596496582
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.8393054604530334
-        Y: 0.6853293776512146
-        Z: 1.452785611152649
+        X: 0.5198315382003784
+        Y: 0.8159595131874084
+        Z: 1.621773362159729
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.49000027775764465
+      Pitch: 0.39000019431114197
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.5718141794204712
+      Yaw: 0.7468141317367554
     Saved: ~
 Window Geometry:
   Displays:

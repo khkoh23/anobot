@@ -1,11 +1,11 @@
 Panels:
   - Class: rviz_common/Displays
-    Help Height: 70
+    Help Height: 0
     Name: Displays
     Property Tree Widget:
       Expanded: ~
       Splitter Ratio: 0.5
-    Tree Height: 156
+    Tree Height: 226
   - Class: rviz_common/Help
     Name: Help
   - Class: rviz_common/Views
@@ -65,6 +65,15 @@ Visualization Manager:
           Expand Link Details: false
           Expand Tree: false
           Link Tree Style: Links in Alphabetic Order
+          anobot_grasp_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          anobot_tool_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
           base_footprint:
             Alpha: 1
             Show Axes: false
@@ -79,7 +88,24 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
-          dummy_estop:
+          camera_bottom_screw_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          camera_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          camera_mount:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          end_effector_mount:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          estop_link:
             Alpha: 1
             Show Axes: false
             Show Trail: false
@@ -88,61 +114,62 @@ Visualization Manager:
             Alpha: 1
             Show Axes: false
             Show Trail: false
-          ur10e_base:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          ur10e_base_link:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          ur10e_base_link_inertia:
+          tool_mount:
             Alpha: 1
             Show Axes: false
             Show Trail: false
             Value: true
-          ur10e_flange:
+          ur_base:
             Alpha: 1
             Show Axes: false
             Show Trail: false
-          ur10e_forearm_link:
+          ur_base_link:
             Alpha: 1
             Show Axes: false
             Show Trail: false
-            Value: true
-          ur10e_ft_frame:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          ur10e_shoulder_link:
+          ur_base_link_inertia:
             Alpha: 1
             Show Axes: false
             Show Trail: false
             Value: true
-          ur10e_tcp:
+          ur_flange:
             Alpha: 1
             Show Axes: false
             Show Trail: false
-          ur10e_tool0:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          ur10e_upper_arm_link:
+          ur_forearm_link:
             Alpha: 1
             Show Axes: false
             Show Trail: false
             Value: true
-          ur10e_wrist_1_link:
+          ur_ft_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          ur_shoulder_link:
             Alpha: 1
             Show Axes: false
             Show Trail: false
             Value: true
-          ur10e_wrist_2_link:
+          ur_tool0:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          ur_upper_arm_link:
             Alpha: 1
             Show Axes: false
             Show Trail: false
             Value: true
-          ur10e_wrist_3_link:
+          ur_wrist_1_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          ur_wrist_2_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          ur_wrist_3_link:
             Alpha: 1
             Show Axes: false
             Show Trail: false
@@ -168,7 +195,7 @@ Visualization Manager:
         Colliding Link Color: 255; 0; 0
         Goal State Alpha: 0.5
         Goal State Color: 250; 128; 0
-        Interactive Marker Size: 0.20000000298023224
+        Interactive Marker Size: 0
         Joint Violation Color: 255; 0; 255
         Planning Group: ur_arm
         Query Goal State: true
@@ -193,6 +220,15 @@ Visualization Manager:
           Expand Link Details: false
           Expand Tree: false
           Link Tree Style: Links in Alphabetic Order
+          anobot_grasp_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          anobot_tool_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
           base_footprint:
             Alpha: 1
             Show Axes: false
@@ -207,7 +243,24 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
-          dummy_estop:
+          camera_bottom_screw_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          camera_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          camera_mount:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          end_effector_mount:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          estop_link:
             Alpha: 1
             Show Axes: false
             Show Trail: false
@@ -216,61 +269,62 @@ Visualization Manager:
             Alpha: 1
             Show Axes: false
             Show Trail: false
-          ur10e_base:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          ur10e_base_link:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          ur10e_base_link_inertia:
+          tool_mount:
             Alpha: 1
             Show Axes: false
             Show Trail: false
             Value: true
-          ur10e_flange:
+          ur_base:
             Alpha: 1
             Show Axes: false
             Show Trail: false
-          ur10e_forearm_link:
+          ur_base_link:
             Alpha: 1
             Show Axes: false
             Show Trail: false
-            Value: true
-          ur10e_ft_frame:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          ur10e_shoulder_link:
+          ur_base_link_inertia:
             Alpha: 1
             Show Axes: false
             Show Trail: false
             Value: true
-          ur10e_tcp:
+          ur_flange:
             Alpha: 1
             Show Axes: false
             Show Trail: false
-          ur10e_tool0:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          ur10e_upper_arm_link:
+          ur_forearm_link:
             Alpha: 1
             Show Axes: false
             Show Trail: false
             Value: true
-          ur10e_wrist_1_link:
+          ur_ft_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          ur_shoulder_link:
             Alpha: 1
             Show Axes: false
             Show Trail: false
             Value: true
-          ur10e_wrist_2_link:
+          ur_tool0:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          ur_upper_arm_link:
             Alpha: 1
             Show Axes: false
             Show Trail: false
             Value: true
-          ur10e_wrist_3_link:
+          ur_wrist_1_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          ur_wrist_2_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          ur_wrist_3_link:
             Alpha: 1
             Show Axes: false
             Show Trail: false
@@ -298,25 +352,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 8.726985931396484
+      Distance: 5.488838195800781
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.10000000149011612
-        Y: 0.25
-        Z: 0.30000001192092896
+        X: 0.08233031630516052
+        Y: -0.1904056817293167
+        Z: 0.6650882363319397
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5
+      Pitch: 0.43000006675720215
       Target Frame: world
       Value: Orbit (rviz_default_plugins)
-      Yaw: -0.6230000257492065
+      Yaw: 3.1301815509796143
     Saved: ~
 Window Geometry:
   Displays:
@@ -330,9 +384,9 @@ Window Geometry:
     collapsed: false
   MotionPlanning - Trajectory Slider:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000001ee00000395fc0200000005fb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000004400fffffffb000000100044006900730070006c006100790073010000003f00000122000000cc00fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e00670100000167000001b20000019600fffffffb0000000800480065006c0070000000029a0000006e0000006f00fffffffb0000000a00560069006500770073010000031f000000b5000000a900ffffff000001ab0000039500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000002b400000395fc0200000005fb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000004400fffffffb000000100044006900730070006c006100790073010000003f00000122000000cc00fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e00670100000167000001b20000019600fffffffb0000000800480065006c0070000000029a0000006e0000006f00fffffffb0000000a00560069006500770073010000031f000000b5000000a900ffffff000004840000039500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
-  Width: 927
-  X: 993
+  Width: 1854
+  X: 66
   Y: 32

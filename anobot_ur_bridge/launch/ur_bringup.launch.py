@@ -401,13 +401,10 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "tf_prefix",
-            default_value=[
-                LaunchConfiguration("ur_type"),
-                "_",
-            ],
+            default_value="ur_",
             description=(
-                "tf_prefix of the joint names, useful for multi-robot setup. "
-                "If changed, joint names in the controllers configuration must also be updated. "
+                "Prefix applied consistently to all UR links and joints. "
+                "The Anobot mobile base remains unprefixed. "
                 "This launch argument is also available to controller YAML substitutions."
             ),
         )

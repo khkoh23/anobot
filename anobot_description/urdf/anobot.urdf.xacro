@@ -1,56 +1,25 @@
 <?xml version="1.0"?>
 <robot name="anobot" xmlns:xacro="http://ros.org/wiki/xacro">
 
-  <xacro:include filename="$(find anobot_description)/urdf/anobot_agv.xacro"/>
-  <xacro:include filename="$(find anobot_description)/urdf/anobot_ur.xacro"/>
-  <xacro:include filename="$(find anobot_description)/urdf/anobot_end_effector.xacro"/> 
+  <xacro:include filename="$(find anobot_description)/urdf/anobot_macro.xacro"/>
 
   <xacro:arg name="ur_type" default="ur10e"/>
-  <xacro:arg name="joint_limits_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/joint_limits.yaml"/>
-  <xacro:arg name="kinematics_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/default_kinematics.yaml"/>
-  <xacro:arg name="physical_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/physical_parameters.yaml"/>
-  <xacro:arg name="visual_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/visual_parameters.yaml"/>
+  <xacro:arg name="tf_prefix" default="ur_"/>
+  <xacro:arg name="joint_limits_parameters_file" 
+    default="$(find ur_description)/config/$(arg ur_type)/joint_limits.yaml"/>
+  <xacro:arg name="kinematics_parameters_file"
+    default="$(find ur_description)/config/$(arg ur_type)/default_kinematics.yaml"/>
+  <xacro:arg name="physical_parameters_file"
+    default="$(find ur_description)/config/$(arg ur_type)/physical_parameters.yaml"/>
+  <xacro:arg name="visual_parameters_file"
+    default="$(find ur_description)/config/$(arg ur_type)/visual_parameters.yaml"/>
 
-  <material name="dark_grey">
-     <color rgba="0.25 0.25 0.25 1"/>
-  </material>
-
-  <material name="grey">
-    <color rgba="0.5 0.5 0.5 1"/>
-  </material>
-
-  <material name="invisible">
-    <color rgba="0.9 0.9 0.9 0.1"/>
-  </material>
-
-  <material name="white">
-    <color rgba="1 1 1 1"/>
-  </material>
-
-  <material name="cobalt_blue">
-    <color rgba="0 0.25 0.76 1"/>
-  </material>
-
-  <material name="pale_green">
-    <color rgba="0.60 0.98 0.60 1"/>
-  </material>
-
-  <xacro:anobot_agv/>
-
-  <xacro:anobot_ur
-    parent="robot_mount"
+  <xacro:anobot
     ur_type="$(arg ur_type)"
+    tf_prefix="$(arg tf_prefix)"
     joint_limits_parameters_file="$(arg joint_limits_parameters_file)"
     kinematics_parameters_file="$(arg kinematics_parameters_file)"
     physical_parameters_file="$(arg physical_parameters_file)"
-    visual_parameters_file="$(arg visual_parameters_file)">
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-  </xacro:anobot_ur> 
-
-  <xacro:anobot_end_effector 
-    ur_type="$(arg ur_type)"
-    connected_to="tool0">
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-  </xacro:anobot_end_effector>
+    visual_parameters_file="$(arg visual_parameters_file)"/>
 
 </robot>

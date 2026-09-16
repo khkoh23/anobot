@@ -2,27 +2,21 @@
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
 
   <xacro:macro name="anobot_end_effector" params="
-    ur_type
-    connected_to
+    parent
+    tool_link:=anobot_tool_link
+    grasp_frame:=anobot_grasp_frame
+    tool_length:=0.150
+    tool_width:=0.100
+    tool_depth:=0.100
+    tool_mass:=1.0
     *origin
   ">
 
     <!--
       Temporary end-effector envelope for workspace and collision studies.
-
-      tool_length:
-        Distance from UR tool0 to the assumed rod gripping point.
-
-      The dimensions should later be replaced with the actual end-effector
-      dimensions and calibrated grasp frame.
+      Replace with the actual end-effector geometry and mass properties.
     -->
-    <xacro:property name="tool_length" value="0.150"/>
-    <xacro:property name="tool_width" value="0.100"/>
-    <xacro:property name="tool_depth" value="0.100"/>
-
-    <!-- Physical placeholder end-effector -->
-    <link name="anobot_tool_link">
-
+    <link name="${tool_link}">
       <visual>
         <origin
           xyz="0 0 ${tool_length / 2.0}"
@@ -42,12 +36,11 @@
         </geometry>
       </collision>
 
-      <!-- Inertial values are approximate and only for simulation validity. -->
       <inertial>
         <origin
           xyz="0 0 ${tool_length / 2.0}"
           rpy="0 0 0"/>
-        <mass value="1.0"/>
+        <mass value="${tool_mass}"/>
         <inertia
           ixx="0.002708"
           ixy="0.0"
@@ -56,25 +49,20 @@
           iyz="0.0"
           izz="0.001667"/>
       </inertial>
-
     </link>
 
-    <joint name="anobot_tool_joint" type="fixed">
-      <parent link="${ur_type}_${connected_to}"/>
-      <child link="anobot_tool_link"/>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+    <joint name="${tool_link}_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${tool_link}"/>
+      <xacro:insert_block name="origin"/>
     </joint>
 
-    <!--
-      This link is the assumed rod grasping point.
+    <!-- Nominal task frame at the assumed rod gripping point. -->
+    <link name="${grasp_frame}"/>
 
-      An attached MoveIt collision object can be attached to this link.
-    -->
-    <link name="anobot_grasp_frame"/>
-
-    <joint name="anobot_grasp_joint" type="fixed">
-      <parent link="anobot_tool_link"/>
-      <child link="anobot_grasp_frame"/>
+    <joint name="${grasp_frame}_joint" type="fixed">
+      <parent link="${tool_link}"/>
+      <child link="${grasp_frame}"/>
       <origin xyz="0 0 ${tool_length}" rpy="0 0 0"/>
     </joint>
 

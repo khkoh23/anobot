@@ -9,18 +9,25 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     ur_type = LaunchConfiguration("ur_type")
+    tf_prefix = LaunchConfiguration("tf_prefix")
     description_package = FindPackageShare("anobot_description")
-    description_file = PathJoinSubstitution([description_package, "urdf", "anobot_cell.urdf.xacro"])
+    description_file = PathJoinSubstitution([description_package, "urdf", "anobot.urdf.xacro"])
     rvizconfig_file = PathJoinSubstitution([description_package, "rviz", "view_robot.rviz"])
 
     robot_description = ParameterValue(
-        Command(["xacro ", description_file, " ", "ur_type:=", ur_type]), value_type=str
+        Command(
+            ["xacro ", description_file, " ", 
+             "ur_type:=", ur_type, " ", 
+             "tf_prefix:=", tf_prefix,]
+            ), 
+        value_type=str,
     )
 
     robot_state_publisher_node = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
-        parameters=[{"robot_description": robot_description}, {"frame_prefix": ""}],
+        output="screen",
+        parameters=[{"robot_description": robot_description}],
     )
 
     joint_state_publisher_gui_node = Node(
@@ -58,7 +65,12 @@ def generate_launch_description():
             description="Type/series of used UR robot.",
             choices=["ur3", "ur3e", "ur5", "ur5e", "ur10", "ur10e", "ur16e", "ur20", "ur30",],
             default_value="ur10e",
-        )
+        ),
+        DeclareLaunchArgument(
+            "tf_prefix",
+            default_value="ur_",
+            description="Prefix applied to UR links and joints.",
+        ),
     ]
 
     return LaunchDescription(

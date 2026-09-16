@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:macro name="anobot_tool_mount" params="
+    parent
+    mount_link:=tool_mount
+    camera_mount_link:=camera_mount
+    end_effector_mount_link:=end_effector_mount
+    mount_yaw:=0.0
+    camera_pitch_offset:=${6.0 * pi / 180.0}
+  ">
+
+    <!--
+      Physical adapter attached directly to the UR tool0 frame.
+      The visual and collision mesh origins follow the CAD model.
+    -->
+    <link name="${mount_link}">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh
+            filename="package://anobot_description/meshes/camera_adapter.dae"/>
+        </geometry>
+        <material name="dark_grey"/>
+      </visual>
+
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh
+            filename="package://anobot_description/meshes/camera_adapter_collision.stl"/>
+        </geometry>
+      </collision>
+
+      <!--
+        Provisional mass properties. Replace after weighing the printed part.
+      -->
+      <inertial>
+        <origin xyz="0 -0.025 0.010" rpy="0 0 0"/>
+        <mass value="0.150"/>
+        <inertia
+          ixx="0.00010"
+          ixy="0.0"
+          ixz="0.0"
+          iyy="0.00010"
+          iyz="0.0"
+          izz="0.00010"/>
+      </inertial>
+    </link>
+
+    <joint name="${mount_link}_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${mount_link}"/>
+      <origin xyz="0 0 0" rpy="0 0 ${mount_yaw}"/>
+    </joint>
+
+    <!-- Mechanical reference for the D435i mounting interface. -->
+    <link name="${camera_mount_link}"/>
+
+    <joint name="${camera_mount_link}_joint" type="fixed">
+      <parent link="${mount_link}"/>
+      <child link="${camera_mount_link}"/>
+      <origin
+        xyz="0 -0.067 0.0171"
+        rpy="0 ${-pi / 2.0 + camera_pitch_offset} ${pi / 2.0}"/>
+    </joint>
+
+    <!-- Mechanical output surface for the downstream end effector. -->
+    <link name="${end_effector_mount_link}"/>
+
+    <joint name="${end_effector_mount_link}_joint" type="fixed">
+      <parent link="${mount_link}"/>
+      <child link="${end_effector_mount_link}"/>
+      <origin xyz="0 0 0.007" rpy="0 0 0"/>
+    </joint>
+
+  </xacro:macro>
+
+</robot>
