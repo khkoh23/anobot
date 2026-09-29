@@ -5,10 +5,8 @@
     parent
     tool_link:=anobot_tool_link
     grasp_frame:=anobot_grasp_frame
-    tool_length:=0.150
-    tool_width:=0.100
-    tool_depth:=0.100
-    tool_mass:=1.0
+    tool_length:=0.060
+    tool_mass:=0.150
     *origin
   ">
 
@@ -19,27 +17,27 @@
     <link name="${tool_link}">
       <visual>
         <origin
-          xyz="0 0 ${tool_length / 2.0}"
-          rpy="0 0 0"/>
+          xyz="0 0 0"
+          rpy="${pi} 0 0"/>
         <geometry>
-          <box size="${tool_width} ${tool_depth} ${tool_length}"/>
+          <mesh 
+            filename="package://anobot_description/meshes/60mm_stylus.STL"/>
         </geometry>
-        <material name="cobalt_blue"/>
+        <material name="white"/>
       </visual>
-
       <collision>
         <origin
-          xyz="0 0 ${tool_length / 2.0}"
-          rpy="0 0 0"/>
+          xyz="0 0 0"
+          rpy="${pi} 0 0"/>
         <geometry>
-          <box size="${tool_width} ${tool_depth} ${tool_length}"/>
+          <mesh 
+            filename="package://anobot_description/meshes/60mm_stylus.STL"/>
         </geometry>
       </collision>
-
       <inertial>
         <origin
-          xyz="0 0 ${tool_length / 2.0}"
-          rpy="0 0 0"/>
+          xyz="0 0 0"
+          rpy="${pi} 0 0"/>
         <mass value="${tool_mass}"/>
         <inertia
           ixx="0.002708"

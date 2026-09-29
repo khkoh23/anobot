@@ -1,0 +1,16 @@
+/workstation_grasp_pose:
+  ros__parameters:
+    parent_frame: workstation_marker_26_calibrated
+    grasp_frame: workstation_grasp
+
+    x: 0.050
+    y: 0.125
+    z: 0.232
+
+    roll_deg: 90.0
+    pitch_deg: 0.0
+    yaw_deg: -90.0
+
+    arrow_length: 0.15
+    arrow_width: 0.02
+    publish_rate_hz: 10.0

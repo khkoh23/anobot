@@ -3,13 +3,13 @@
 
   <xacro:macro name="anobot_agv">
 
-    <xacro:property name="ground_clearance" value="0.050"/> 
-    <xacro:property name="agv_length" value="1.034"/> 
-    <xacro:property name="agv_width" value="0.680"/> 
-    <xacro:property name="agv_height" value="0.320"/>
-    <xacro:property name="body_length" value="0.9"/> 
-    <xacro:property name="body_width" value="0.6"/> 
-    <xacro:property name="body_height" value="0.9"/>
+    <xacro:property name="ground_clearance" value="0.130"/> 
+    <xacro:property name="agv_length" value="0.780"/> 
+    <xacro:property name="agv_width" value="0.560"/> 
+    <xacro:property name="agv_height" value="0.170"/>
+    <xacro:property name="body_length" value="0.780"/> 
+    <xacro:property name="body_width" value="0.560"/> 
+    <xacro:property name="body_height" value="0.880"/>
 
     <link name="base_footprint"/>
 

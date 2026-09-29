@@ -32,6 +32,9 @@ setup(
         'console_scripts': [
           'apply_factory_scene = anobot_scene.apply_factory_scene:main',
           'rod_scene_manager = anobot_scene.rod_scene_manager:main',
+          'dummy_tank_marker = anobot_scene.dummy_tank_marker:main',
+          'dummy_tank_scene = anobot_scene.dummy_tank_scene:main',
+          'workstation_grasp_pose = anobot_scene.workstation_grasp_pose:main',
         ],
     },
 )

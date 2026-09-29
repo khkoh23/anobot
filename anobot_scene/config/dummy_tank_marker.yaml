@@ -1,0 +1,20 @@
+/dummy_tank_marker:
+  ros__parameters:
+    color_a: 0.8
+    color_b: 0.75
+    color_g: 0.65
+    color_r: 0.55
+    frame_id: workstation_marker_26_calibrated
+    mesh_resource: package://anobot_scene/meshes/dummy_tank.STL
+    pitch_deg: 90.0
+    roll_deg: 0.0
+    scale_x: 1.0
+    scale_y: 1.0
+    scale_z: 1.0
+    start_type_description_service: true
+    use_sim_time: false
+    x: -1.135
+    y: 0.128
+    yaw_deg: -90.0
+    z: 0.222
+
