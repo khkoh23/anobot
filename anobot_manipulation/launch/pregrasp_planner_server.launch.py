@@ -39,6 +39,9 @@ def generate_launch_description():
                 "end_effector_link": "anobot_grasp_frame",
                 "tf_timeout_s": 5.0,
                 "scene_sync_delay_s": 2.0,
+                "allow_execution": False,
+                "mock_hardware": True,
+                "maximum_plan_age_s": 30.0,
             },
         ],
     )

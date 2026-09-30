@@ -39,6 +39,8 @@ class PregraspPlannerServer(Node):
         self.robot = robot
         self.arm = arm
         self.planning_lock = threading.Lock()
+        self.latest_trajectory = None
+        self.latest_plan_time = None
 
         self.declare_parameter(
             "planning_frame",
@@ -59,6 +61,18 @@ class PregraspPlannerServer(Node):
         self.declare_parameter(
             "scene_sync_delay_s",
             2.0,
+        )
+        self.declare_parameter(
+             "allow_execution",
+            False,
+        )
+        self.declare_parameter(
+            "mock_hardware",
+            True,
+        )
+        self.declare_parameter(
+            "maximum_plan_age_s",
+            30.0,
         )
 
         self.tf_buffer = Buffer()
@@ -84,6 +98,18 @@ class PregraspPlannerServer(Node):
             self.plan_pregrasp_callback,
         )
 
+        self.execute_service = self.create_service(
+            Trigger,
+            "/manipulation/execute_pregrasp",
+            self.execute_pregrasp_callback,
+        )
+
+        self.clear_service = self.create_service(
+            Trigger,
+            "/manipulation/clear_pregrasp_plan",
+            self.clear_plan_callback,
+        )
+
         scene_delay = float(
             self.get_parameter("scene_sync_delay_s").value
         )
@@ -98,7 +124,10 @@ class PregraspPlannerServer(Node):
             "Persistent pre-grasp planner is ready"
         )
         self.get_logger().info(
-            "Service: /manipulation/plan_pregrasp"
+            "Services:\n"
+            "  /manipulation/plan_pregrasp\n"
+            "  /manipulation/execute_pregrasp\n"
+            "  /manipulation/clear_pregrasp_plan"
         )
         self.get_logger().warning(
             "PLAN-ONLY MODE: trajectory execution is disabled"
@@ -220,6 +249,8 @@ class PregraspPlannerServer(Node):
                 .points
             )
 
+            self.latest_trajectory = plan_result.trajectory
+            self.latest_plan_time = time.monotonic()
             self.publish_display_trajectory(
                 plan_result.trajectory
             )
@@ -256,6 +287,123 @@ class PregraspPlannerServer(Node):
         except Exception:
             pass
 
+    def execute_pregrasp_callback(self, request, response):
+        del request
+
+        allow_execution = bool(
+            self.get_parameter("allow_execution").value
+        )
+
+        mock_hardware = bool(
+            self.get_parameter("mock_hardware").value
+        )
+
+        if not allow_execution:
+            response.success = False
+            response.message = (
+                "Execution is disabled. Set allow_execution:=true "
+                "only for an intentional mock-hardware test."
+            )
+            return response
+
+        if not mock_hardware:
+            response.success = False
+            response.message = (
+                "Execution rejected: this service is currently "
+                "restricted to mock hardware."
+            )
+            return response
+
+        if self.latest_trajectory is None:
+            response.success = False
+            response.message = (
+                "No stored pre-grasp plan. Call "
+                "/manipulation/plan_pregrasp first."
+            )
+            return response
+
+        maximum_age = float(
+            self.get_parameter("maximum_plan_age_s").value
+        )
+
+        plan_age = (
+            time.monotonic() - self.latest_plan_time
+        )
+
+        if plan_age > maximum_age:
+            self.latest_trajectory = None
+            self.latest_plan_time = None
+
+            response.success = False
+            response.message = (
+                f"Stored plan is stale ({plan_age:.1f} seconds). "
+                "Generate a new plan."
+            )
+            return response
+
+        if not self.planning_lock.acquire(blocking=False):
+            response.success = False
+            response.message = (
+                "Planner is busy with another request."
+            )
+            return response
+
+        try:
+            self.get_logger().warning(
+                "Executing stored pre-grasp trajectory on "
+                "MOCK HARDWARE"
+            )
+
+            result = self.robot.execute(
+                self.latest_trajectory,
+                controllers=[],
+            )
+
+            if result:
+                response.success = True
+                response.message = (
+                    "Mock pre-grasp trajectory executed successfully."
+                )
+
+                # A plan must never be reused after execution.
+                self.latest_trajectory = None
+                self.latest_plan_time = None
+
+                self.get_logger().info(response.message)
+            else:
+                response.success = False
+                response.message = (
+                    "Mock trajectory execution failed."
+                )
+
+                self.get_logger().error(response.message)
+
+            return response
+
+        except Exception as error:
+            response.success = False
+            response.message = (
+                f"Mock execution failed: {error}"
+            )
+
+            self.get_logger().error(response.message)
+            return response
+
+        finally:
+            self.planning_lock.release()
+
+    def clear_plan_callback(self, request, response):
+        del request
+
+        self.latest_trajectory = None
+        self.latest_plan_time = None
+
+        response.success = True
+        response.message = "Stored pre-grasp plan cleared."
+
+        self.get_logger().info(response.message)
+
+        return response
 
 def main(args=None):
     rclpy.init(args=args)
