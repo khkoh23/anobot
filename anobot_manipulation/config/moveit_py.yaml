@@ -12,6 +12,7 @@
     planning_pipelines:
       pipeline_names:
         - ompl
+        - pilz_industrial_motion_planner
 
     plan_request_params:
       planning_attempts: 5
@@ -20,3 +21,12 @@
       planning_time: 5.0
       max_velocity_scaling_factor: 0.05
       max_acceleration_scaling_factor: 0.05
+    
+    pilz_lin:
+      plan_request_params:
+        planning_attempts: 1
+        planning_pipeline: pilz_industrial_motion_planner
+        planner_id: LIN
+        planning_time: 5.0
+        max_velocity_scaling_factor: 0.05
+        max_acceleration_scaling_factor: 0.05
