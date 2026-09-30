@@ -116,7 +116,7 @@ rclcpp_action::GoalResponse TrajectoryUntilNode::goal_received_callback(
   // it is assumed to be rejected.
   send_trajectory_goal(goal);
   std::unique_lock<std::mutex> traj_lock(mutex_trajectory);
-  cv_until_.wait_for(traj_lock, 1s);
+  cv_trajectory_.wait_for(traj_lock, 1s);
   if (!trajectory_accepted_) {
     reset_node();
     return rclcpp_action::GoalResponse::REJECT;

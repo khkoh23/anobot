@@ -671,7 +671,7 @@ def generate_launch_description():
                 [
                     FindPackageShare("anobot_ur_bridge"),
                     "config",
-                    "default_ur10e_calibration.yaml",
+                    "ur10e_192_168_12_248_calibration.yaml",
                 ]
             ),
             description="UR calibration YAML passed to the robot description xacro.",
