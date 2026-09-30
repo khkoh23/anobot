@@ -6,7 +6,7 @@ import numpy as np
 import trimesh
 from rcl_interfaces.msg import SetParametersResult
 from rclpy.node import Node
-from rclpy.qos import DurabilityPolicy, QoSProfile
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from visualization_msgs.msg import Marker
 from pathlib import Path
 from ament_index_python.packages import get_package_share_directory
@@ -48,10 +48,13 @@ class DummyTankScene(Node):
       "/dummy_tank/marker",
       marker_qos,
     )
+    collision_qos = QoSProfile(depth=1)
+    collision_qos.reliability = ReliabilityPolicy.RELIABLE
+    collision_qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
     self.collision_publisher = self.create_publisher(
       CollisionObject,
       "/collision_object",
-      10,
+      collision_qos,
     )
     self.collision_mesh = self.load_collision_mesh()
     self.collision_published = False
