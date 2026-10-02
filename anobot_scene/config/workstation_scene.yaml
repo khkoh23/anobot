@@ -1,0 +1,42 @@
+/workstation_scene:
+  ros__parameters:
+    collision_publish_delay_s: 3.0
+    frame_id: workstation_marker_26_calibrated
+    publish_visual_markers: true
+    rod:
+      color_a: 1.0
+      color_b: 0.85
+      color_g: 0.8
+      color_r: 0.8
+      mesh_file: meshes/anodizing_rod.STL
+      mesh_resource: package://anobot_scene/meshes/anodizing_rod.STL
+      object_id: anodizing_rod
+      pitch_deg: -90.0
+      roll_deg: -90.0
+      scale_x: 1.0
+      scale_y: 1.0
+      scale_z: 1.0
+      x: 0.06
+      y: 0.125
+      yaw_deg: 0.0
+      z: -0.005
+    start_type_description_service: true
+    tank:
+      color_a: 0.8
+      color_b: 0.75
+      color_g: 0.65
+      color_r: 0.55
+      mesh_file: meshes/dummy_tank.STL
+      mesh_resource: package://anobot_scene/meshes/dummy_tank.STL
+      object_id: dummy_tank
+      pitch_deg: -90.0
+      roll_deg: -90.0
+      scale_x: 1.0
+      scale_y: 1.0
+      scale_z: 1.0
+      x: 0.06
+      y: 0.125
+      yaw_deg: 0.0
+      z: -0.005
+    use_sim_time: false
+
