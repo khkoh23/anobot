@@ -1,0 +1,4 @@
+/mock_pick_cycle_server:
+  ros__parameters:
+    mock_hardware: true
+    service_timeout_s: 30.0

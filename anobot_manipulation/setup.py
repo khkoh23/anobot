@@ -31,6 +31,7 @@ setup(
           'workstation_grasp_pose = anobot_manipulation.workstation_grasp_pose:main',
           'plan_to_pregrasp = anobot_manipulation.plan_to_pregrasp:main',
           'pregrasp_planner_server = anobot_manipulation.pregrasp_planner_server:main',
+          'mock_pick_cycle_server = anobot_manipulation.mock_pick_cycle_server:main',
         ],
     },
 )
