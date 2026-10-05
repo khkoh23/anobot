@@ -37,6 +37,7 @@ setup(
         #   'dummy_tank_scene = anobot_scene.dummy_tank_scene:main',
           'workstation_grasp_pose = anobot_scene.workstation_grasp_pose:main',
           'workstation_scene = anobot_scene.workstation_scene:main',
+          'rod_lifecycle_server = anobot_scene.rod_lifecycle_server:main',
         ],
     },
 )

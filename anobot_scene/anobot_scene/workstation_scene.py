@@ -9,7 +9,13 @@ import trimesh
 
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import Point, Pose
-from moveit_msgs.msg import CollisionObject
+from moveit_msgs.msg import (
+    CollisionObject,
+    PlanningScene,
+)
+from moveit_msgs.srv import ApplyPlanningScene
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import (
     DurabilityPolicy,
@@ -17,7 +23,7 @@ from rclpy.qos import (
     ReliabilityPolicy,
 )
 from shape_msgs.msg import Mesh, MeshTriangle
-from visualization_msgs.msg import Marker, MarkerArray
+from visualization_msgs.msg import Marker
 
 
 class WorkstationScene(Node):
@@ -30,47 +36,50 @@ class WorkstationScene(Node):
             "workstation_marker_26_calibrated",
         )
         self.declare_parameter(
-            "collision_publish_delay_s",
+            "object_id",
+            "dummy_tank",
+        )
+        self.declare_parameter(
+            "mesh_file",
+            "meshes/dummy_tank.STL",
+        )
+        self.declare_parameter(
+            "mesh_resource",
+            "package://anobot_scene/meshes/dummy_tank.STL",
+        )
+
+        self.declare_parameter("x", 0.060)
+        self.declare_parameter("y", 0.125)
+        self.declare_parameter("z", -0.005)
+
+        self.declare_parameter("roll_deg", -90.0)
+        self.declare_parameter("pitch_deg", -90.0)
+        self.declare_parameter("yaw_deg", 0.0)
+
+        self.declare_parameter("scale_x", 1.0)
+        self.declare_parameter("scale_y", 1.0)
+        self.declare_parameter("scale_z", 1.0)
+
+        self.declare_parameter("color_r", 0.55)
+        self.declare_parameter("color_g", 0.65)
+        self.declare_parameter("color_b", 0.75)
+        self.declare_parameter("color_a", 0.80)
+
+        self.declare_parameter(
+            "publish_visual_marker",
+            False,
+        )
+        self.declare_parameter(
+            "registration_delay_s",
             3.0,
         )
 
-        self.declare_parameter(
-          "publish_visual_markers",
-          False,
-        )
+        self.callback_group = ReentrantCallbackGroup()
 
-        self.declare_object_parameters(
-            prefix="tank",
-            object_id="dummy_tank",
-            mesh_file="meshes/dummy_tank.STL",
-            mesh_resource=(
-                "package://anobot_scene/"
-                "meshes/dummy_tank.STL"
-            ),
-            x=0.060,
-            y=0.125,
-            z=-0.005,
-            roll_deg=-90.0,
-            pitch_deg=-90.0,
-            yaw_deg=0.0,
-            color=(0.55, 0.65, 0.75, 0.80),
-        )
-
-        self.declare_object_parameters(
-            prefix="rod",
-            object_id="anodizing_rod",
-            mesh_file="meshes/anodizing_rod.STL",
-            mesh_resource=(
-                "package://anobot_scene/"
-                "meshes/anodizing_rod.STL"
-            ),
-            x=0.060,
-            y=0.125,
-            z=-0.005,
-            roll_deg=-90.0,
-            pitch_deg=-90.0,
-            yaw_deg=0.0,
-            color=(0.80, 0.80, 0.85, 1.00),
+        self.apply_client = self.create_client(
+            ApplyPlanningScene,
+            "/apply_planning_scene",
+            callback_group=self.callback_group,
         )
 
         marker_qos = QoSProfile(depth=1)
@@ -81,143 +90,53 @@ class WorkstationScene(Node):
             DurabilityPolicy.TRANSIENT_LOCAL
         )
 
-        collision_qos = QoSProfile(depth=10)
-        collision_qos.reliability = (
-            ReliabilityPolicy.RELIABLE
-        )
-        collision_qos.durability = (
-            DurabilityPolicy.TRANSIENT_LOCAL
-        )
-
         self.marker_publisher = self.create_publisher(
-            MarkerArray,
-            "/workstation/markers",
+            Marker,
+            "/workstation/tank_marker",
             marker_qos,
         )
 
-        self.collision_publisher = self.create_publisher(
-            CollisionObject,
-            "/collision_object",
-            collision_qos,
-        )
+        self.tank_mesh = self.load_tank_mesh()
+        self.registered = False
 
-        self.meshes = {
-            "tank": self.load_collision_mesh("tank"),
-            "rod": self.load_collision_mesh("rod"),
-        }
-
-        self.marker_timer = None
-
-        if bool(
-            self.get_parameter(
-                "publish_visual_markers"
-            ).value
+        if not self.apply_client.wait_for_service(
+            timeout_sec=15.0
         ):
-            self.marker_timer = self.create_timer(
-                0.2,
-                self.publish_markers,
+            raise RuntimeError(
+                "/apply_planning_scene is unavailable"
             )
 
         delay = float(
             self.get_parameter(
-                "collision_publish_delay_s"
+                "registration_delay_s"
             ).value
         )
 
         self.registration_timer = self.create_timer(
             delay,
-            self.register_collision_scene,
+            self.register_scene,
+            callback_group=self.callback_group,
         )
 
-        self.registered = False
+        if bool(
+            self.get_parameter(
+                "publish_visual_marker"
+            ).value
+        ):
+            self.marker_timer = self.create_timer(
+                0.2,
+                self.publish_marker,
+                callback_group=self.callback_group,
+            )
+        else:
+            self.marker_timer = None
 
         self.get_logger().info(
-            "Workstation scene started"
-        )
-        self.get_logger().info(
-            "Objects: dummy_tank, anodizing_rod"
-        )
-
-    def declare_object_parameters(
-        self,
-        prefix,
-        object_id,
-        mesh_file,
-        mesh_resource,
-        x,
-        y,
-        z,
-        roll_deg,
-        pitch_deg,
-        yaw_deg,
-        color,
-    ):
-        self.declare_parameter(
-            f"{prefix}.object_id",
-            object_id,
-        )
-        self.declare_parameter(
-            f"{prefix}.mesh_file",
-            mesh_file,
-        )
-        self.declare_parameter(
-            f"{prefix}.mesh_resource",
-            mesh_resource,
-        )
-
-        self.declare_parameter(f"{prefix}.x", x)
-        self.declare_parameter(f"{prefix}.y", y)
-        self.declare_parameter(f"{prefix}.z", z)
-
-        self.declare_parameter(
-            f"{prefix}.roll_deg",
-            roll_deg,
-        )
-        self.declare_parameter(
-            f"{prefix}.pitch_deg",
-            pitch_deg,
-        )
-        self.declare_parameter(
-            f"{prefix}.yaw_deg",
-            yaw_deg,
-        )
-
-        self.declare_parameter(
-            f"{prefix}.scale_x",
-            1.0,
-        )
-        self.declare_parameter(
-            f"{prefix}.scale_y",
-            1.0,
-        )
-        self.declare_parameter(
-            f"{prefix}.scale_z",
-            1.0,
-        )
-
-        self.declare_parameter(
-            f"{prefix}.color_r",
-            color[0],
-        )
-        self.declare_parameter(
-            f"{prefix}.color_g",
-            color[1],
-        )
-        self.declare_parameter(
-            f"{prefix}.color_b",
-            color[2],
-        )
-        self.declare_parameter(
-            f"{prefix}.color_a",
-            color[3],
+            "Tank-only workstation scene started"
         )
 
     @staticmethod
-    def quaternion_from_rpy(
-        roll,
-        pitch,
-        yaw,
-    ):
+    def quaternion_from_rpy(roll, pitch, yaw):
         cr = math.cos(roll * 0.5)
         sr = math.sin(roll * 0.5)
         cp = math.cos(pitch * 0.5)
@@ -232,43 +151,37 @@ class WorkstationScene(Node):
             cr * cp * cy + sr * sp * sy,
         )
 
-    def object_pose(self, prefix):
+    def tank_pose(self):
         pose = Pose()
 
         pose.position.x = float(
-            self.get_parameter(
-                f"{prefix}.x"
-            ).value
+            self.get_parameter("x").value
         )
         pose.position.y = float(
-            self.get_parameter(
-                f"{prefix}.y"
-            ).value
+            self.get_parameter("y").value
         )
         pose.position.z = float(
-            self.get_parameter(
-                f"{prefix}.z"
-            ).value
+            self.get_parameter("z").value
         )
 
         roll = math.radians(
             float(
                 self.get_parameter(
-                    f"{prefix}.roll_deg"
+                    "roll_deg"
                 ).value
             )
         )
         pitch = math.radians(
             float(
                 self.get_parameter(
-                    f"{prefix}.pitch_deg"
+                    "pitch_deg"
                 ).value
             )
         )
         yaw = math.radians(
             float(
                 self.get_parameter(
-                    f"{prefix}.yaw_deg"
+                    "yaw_deg"
                 ).value
             )
         )
@@ -288,49 +201,44 @@ class WorkstationScene(Node):
 
         return pose
 
-    def object_scale(self, prefix):
+    def scale_vector(self):
         return np.array([
             float(
                 self.get_parameter(
-                    f"{prefix}.scale_x"
+                    "scale_x"
                 ).value
             ),
             float(
                 self.get_parameter(
-                    f"{prefix}.scale_y"
+                    "scale_y"
                 ).value
             ),
             float(
                 self.get_parameter(
-                    f"{prefix}.scale_z"
+                    "scale_z"
                 ).value
             ),
         ])
 
-    def mesh_path(self, prefix):
-        relative_path = self.get_parameter(
-            f"{prefix}.mesh_file"
-        ).value
-
-        return (
+    def load_tank_mesh(self):
+        mesh_path = (
             Path(
                 get_package_share_directory(
                     "anobot_scene"
                 )
             )
-            / relative_path
+            / self.get_parameter(
+                "mesh_file"
+            ).value
         )
 
-    def load_collision_mesh(self, prefix):
-        path = self.mesh_path(prefix)
-
-        if not path.is_file():
+        if not mesh_path.is_file():
             raise FileNotFoundError(
-                f"{prefix} mesh not found: {path}"
+                f"Tank mesh not found: {mesh_path}"
             )
 
         loaded = trimesh.load(
-            str(path),
+            str(mesh_path),
             force="mesh",
             process=False,
         )
@@ -342,7 +250,7 @@ class WorkstationScene(Node):
 
             if not geometries:
                 raise RuntimeError(
-                    f"{prefix} mesh has no geometry"
+                    "Tank mesh contains no geometry"
                 )
 
             loaded = trimesh.util.concatenate(
@@ -354,7 +262,7 @@ class WorkstationScene(Node):
             trimesh.Trimesh,
         ):
             raise RuntimeError(
-                f"Unsupported {prefix} mesh type: "
+                "Unsupported tank mesh type: "
                 f"{type(loaded).__name__}"
             )
 
@@ -363,7 +271,7 @@ class WorkstationScene(Node):
                 loaded.vertices,
                 dtype=float,
             )
-            * self.object_scale(prefix)
+            * self.scale_vector()
         )
 
         faces = np.asarray(
@@ -371,12 +279,9 @@ class WorkstationScene(Node):
             dtype=int,
         )
 
-        if (
-            len(vertices) == 0
-            or len(faces) == 0
-        ):
+        if len(vertices) == 0 or len(faces) == 0:
             raise RuntimeError(
-                f"{prefix} mesh is empty"
+                "Tank mesh is empty"
             )
 
         mesh = Mesh()
@@ -397,15 +302,13 @@ class WorkstationScene(Node):
             ]
             mesh.triangles.append(triangle)
 
-        bounds = np.array([
-            vertices.min(axis=0),
-            vertices.max(axis=0),
-        ])
-
-        dimensions = bounds[1] - bounds[0]
+        dimensions = (
+            vertices.max(axis=0)
+            - vertices.min(axis=0)
+        )
 
         self.get_logger().info(
-            f"Loaded {prefix} mesh: "
+            "Loaded tank mesh: "
             f"{len(vertices)} vertices, "
             f"{len(faces)} triangles, "
             f"dimensions="
@@ -416,84 +319,7 @@ class WorkstationScene(Node):
 
         return mesh
 
-    def make_visual_marker(
-        self,
-        prefix,
-        marker_id,
-    ):
-        marker = Marker()
-
-        marker.header.stamp = (
-            self.get_clock().now().to_msg()
-        )
-        marker.header.frame_id = (
-            self.get_parameter(
-                "frame_id"
-            ).value
-        )
-
-        marker.ns = "workstation"
-        marker.id = marker_id
-        marker.type = Marker.MESH_RESOURCE
-        marker.action = Marker.ADD
-
-        marker.mesh_resource = (
-            self.get_parameter(
-                f"{prefix}.mesh_resource"
-            ).value
-        )
-
-        marker.mesh_use_embedded_materials = False
-        marker.pose = self.object_pose(prefix)
-
-        scale = self.object_scale(prefix)
-
-        marker.scale.x = float(scale[0])
-        marker.scale.y = float(scale[1])
-        marker.scale.z = float(scale[2])
-
-        marker.color.r = float(
-            self.get_parameter(
-                f"{prefix}.color_r"
-            ).value
-        )
-        marker.color.g = float(
-            self.get_parameter(
-                f"{prefix}.color_g"
-            ).value
-        )
-        marker.color.b = float(
-            self.get_parameter(
-                f"{prefix}.color_b"
-            ).value
-        )
-        marker.color.a = float(
-            self.get_parameter(
-                f"{prefix}.color_a"
-            ).value
-        )
-
-        return marker
-
-    def publish_markers(self):
-        markers = MarkerArray()
-
-        markers.markers.append(
-            self.make_visual_marker(
-                "tank",
-                1,
-            )
-        )
-        markers.markers.append(
-            self.make_visual_marker(
-                "rod",
-                2,
-            )
-        )
-
-        self.marker_publisher.publish(markers)
-
-    def make_collision_object(self, prefix):
+    def make_collision_object(self):
         collision = CollisionObject()
 
         collision.header.stamp = (
@@ -506,85 +332,142 @@ class WorkstationScene(Node):
         )
 
         collision.id = self.get_parameter(
-            f"{prefix}.object_id"
+            "object_id"
         ).value
 
         collision.meshes = [
-            self.meshes[prefix]
-        ]
-        collision.mesh_poses = [
-            self.object_pose(prefix)
+            self.tank_mesh
         ]
 
-        collision.operation = (
-            CollisionObject.ADD
-        )
+        local_pose = Pose()
+        local_pose.orientation.w = 1.0
+
+        collision.mesh_poses = [
+            local_pose
+        ]
+
+        collision.pose = self.tank_pose()
+        collision.operation = CollisionObject.ADD
 
         return collision
 
-    def remove_collision_object(
-        self,
-        object_id,
-    ):
-        remove = CollisionObject()
-
-        remove.header.stamp = (
-            self.get_clock().now().to_msg()
-        )
-        remove.header.frame_id = (
-            self.get_parameter(
-                "frame_id"
-            ).value
-        )
-
-        remove.id = object_id
-        remove.operation = CollisionObject.REMOVE
-
-        self.collision_publisher.publish(remove)
-
-    def register_collision_scene(self):
+    async def register_scene(self):
         if self.registered:
             return
 
-        tank_id = self.get_parameter(
-            "tank.object_id"
-        ).value
-        rod_id = self.get_parameter(
-            "rod.object_id"
-        ).value
-
-        self.remove_collision_object(tank_id)
-        self.remove_collision_object(rod_id)
-
-        self.collision_publisher.publish(
-            self.make_collision_object("tank")
+        scene = PlanningScene()
+        scene.is_diff = True
+        scene.world.collision_objects.append(
+            self.make_collision_object()
         )
-        self.collision_publisher.publish(
-            self.make_collision_object("rod")
+
+        request = ApplyPlanningScene.Request()
+        request.scene = scene
+
+        result = await self.apply_client.call_async(
+            request
         )
+
+        if result is None:
+            self.get_logger().error(
+                "No response while registering tank scene"
+            )
+            return
+
+        if not result.success:
+            self.get_logger().warning(
+                "MoveIt returned an unsuccessful immediate "
+                "tank registration response"
+            )
 
         self.registered = True
         self.registration_timer.cancel()
 
         self.get_logger().info(
-            "Registered workstation collision objects: "
-            f"{tank_id}, {rod_id}"
+            "Registered tank collision object: "
+            f"{self.get_parameter('object_id').value}"
         )
+
+    def publish_marker(self):
+        marker = Marker()
+
+        marker.header.stamp = (
+            self.get_clock().now().to_msg()
+        )
+        marker.header.frame_id = (
+            self.get_parameter(
+                "frame_id"
+            ).value
+        )
+
+        marker.ns = "workstation"
+        marker.id = 1
+        marker.type = Marker.MESH_RESOURCE
+        marker.action = Marker.ADD
+
+        marker.mesh_resource = (
+            self.get_parameter(
+                "mesh_resource"
+            ).value
+        )
+        marker.mesh_use_embedded_materials = False
+        marker.pose = self.tank_pose()
+
+        marker.scale.x = float(
+            self.get_parameter("scale_x").value
+        )
+        marker.scale.y = float(
+            self.get_parameter("scale_y").value
+        )
+        marker.scale.z = float(
+            self.get_parameter("scale_z").value
+        )
+
+        marker.color.r = float(
+            self.get_parameter("color_r").value
+        )
+        marker.color.g = float(
+            self.get_parameter("color_g").value
+        )
+        marker.color.b = float(
+            self.get_parameter("color_b").value
+        )
+        marker.color.a = float(
+            self.get_parameter("color_a").value
+        )
+
+        self.marker_publisher.publish(marker)
 
 
 def main(args=None):
     rclpy.init(args=args)
 
-    node = WorkstationScene()
+    node = None
+    executor = None
 
     try:
-        rclpy.spin(node)
+        node = WorkstationScene()
+
+        executor = MultiThreadedExecutor(
+            num_threads=2
+        )
+        executor.add_node(node)
+        executor.spin()
 
     except KeyboardInterrupt:
         pass
 
     finally:
-        node.destroy_node()
+        if executor is not None:
+            try:
+                executor.shutdown(
+                    timeout_sec=1.0
+                )
+            except Exception:
+                pass
+
+        if node is not None:
+            node.destroy_node()
 
         if rclpy.ok():
             rclpy.shutdown()
