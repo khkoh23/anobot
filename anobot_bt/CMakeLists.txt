@@ -22,9 +22,9 @@ target_include_directories(
 )
 
 ament_target_dependencies(
+  mock_pickup_bt_runner
   ament_index_cpp
   behaviortree_cpp
-  mock_pickup_bt_runner
   rclcpp
   std_srvs
 )
