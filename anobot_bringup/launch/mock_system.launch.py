@@ -213,6 +213,18 @@ def generate_launch_description():
         ],
     )
 
+    task_executor = TimerAction(
+        period=9.0,
+        actions=[
+            IncludeLaunchDescription(
+                package_launch(
+                    "anobot_bt",
+                    "task_executor.launch.py",
+                )
+            )
+        ],
+    )
+
     mock_pick_cycle = TimerAction(
         period=8.0,
         actions=[
@@ -238,6 +250,7 @@ def generate_launch_description():
             workstation_scene,
             rod_lifecycle,
             manipulation,
+            task_executor,
             mock_pick_cycle,
         ]
     )

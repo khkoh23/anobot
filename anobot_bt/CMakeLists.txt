@@ -8,30 +8,55 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(ament_index_cpp REQUIRED)
+find_package(anobot_interfaces REQUIRED)
 find_package(behaviortree_cpp REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_action REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 
-add_executable(
-  mock_pickup_bt_runner src/mock_pickup_bt_runner.cpp
+add_executable(mock_pickup_bt_runner 
+  src/mock_pickup_bt_runner.cpp
 )
 
-target_include_directories(
-  mock_pickup_bt_runner
+target_include_directories(mock_pickup_bt_runner
   PRIVATE include
 )
 
-ament_target_dependencies(
-  mock_pickup_bt_runner
+ament_target_dependencies(mock_pickup_bt_runner
   ament_index_cpp
   behaviortree_cpp
   rclcpp
   std_srvs
 )
 
+add_executable(anobot_task_executor
+  src/task_executor_main.cpp
+  src/task_executor_node.cpp
+)
+
+target_include_directories(anobot_task_executor
+  PRIVATE include
+)
+
+ament_target_dependencies(anobot_task_executor
+  ament_index_cpp
+  anobot_interfaces
+  behaviortree_cpp
+  rclcpp
+  rclcpp_action
+  std_msgs
+  std_srvs
+)
+
 install(
-  TARGETS mock_pickup_bt_runner
+  TARGETS mock_pickup_bt_runner anobot_task_executor
   DESTINATION lib/${PROJECT_NAME}
+)
+
+install(
+  DIRECTORY include/
+  DESTINATION include/
 )
 
 install(

@@ -13,6 +13,7 @@
   <depend>launch</depend>
   <depend>launch_ros</depend>
 
+  <exec_depend>anobot_bt</exec_depend>
   <exec_depend>anobot_manipulation</exec_depend>
   <exec_depend>anobot_moveit_config</exec_depend>
   <exec_depend>anobot_scene</exec_depend>
