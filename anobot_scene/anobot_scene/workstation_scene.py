@@ -24,6 +24,7 @@ from rclpy.qos import (
 )
 from shape_msgs.msg import Mesh, MeshTriangle
 from visualization_msgs.msg import Marker
+from std_srvs.srv import Trigger
 
 
 class WorkstationScene(Node):
@@ -79,6 +80,13 @@ class WorkstationScene(Node):
         self.apply_client = self.create_client(
             ApplyPlanningScene,
             "/apply_planning_scene",
+            callback_group=self.callback_group,
+        )
+
+        self.apply_service = self.create_service(
+            Trigger,
+            "/scene/apply_workstation_scene",
+            self.apply_scene_callback,
             callback_group=self.callback_group,
         )
 
@@ -351,12 +359,10 @@ class WorkstationScene(Node):
 
         return collision
 
-    async def register_scene(self):
-        if self.registered:
-            return
-
+    async def apply_tank_scene(self):
         scene = PlanningScene()
         scene.is_diff = True
+
         scene.world.collision_objects.append(
             self.make_collision_object()
         )
@@ -369,24 +375,66 @@ class WorkstationScene(Node):
         )
 
         if result is None:
-            self.get_logger().error(
-                "No response while registering tank scene"
+            raise RuntimeError(
+                "No response while applying "
+                "workstation scene"
             )
-            return
 
         if not result.success:
             self.get_logger().warning(
                 "MoveIt returned an unsuccessful immediate "
-                "tank registration response"
+                "response for workstation-scene application"
             )
 
-        self.registered = True
-        self.registration_timer.cancel()
-
         self.get_logger().info(
-            "Registered tank collision object: "
+            "Applied tank collision object: "
             f"{self.get_parameter('object_id').value}"
         )
+
+
+    async def register_scene(self):
+        if self.registered:
+            return
+
+        try:
+            await self.apply_tank_scene()
+
+            self.registered = True
+            self.registration_timer.cancel()
+
+        except Exception as error:
+            self.get_logger().error(
+                f"Initial workstation-scene "
+                f"registration failed: {error}"
+            )
+
+
+    async def apply_scene_callback(
+        self,
+        request,
+        response,
+    ):
+        del request
+
+        try:
+            await self.apply_tank_scene()
+
+            self.registered = True
+
+            response.success = True
+            response.message = (
+                "Workstation tank collision scene applied"
+            )
+
+        except Exception as error:
+            response.success = False
+            response.message = str(error)
+
+            self.get_logger().error(
+                f"Apply workstation scene failed: {error}"
+            )
+
+        return response
 
     def publish_marker(self):
         marker = Marker()

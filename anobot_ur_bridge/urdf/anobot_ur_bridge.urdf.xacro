@@ -41,6 +41,7 @@
     script_filename="$(arg ur_script_filename)"
     output_recipe_filename="$(arg ur_output_recipe_filename)"
     input_recipe_filename="$(arg ur_input_recipe_filename)"
+    ur_type="$(arg ur_type)"
     use_mock_hardware="$(arg use_mock_hardware)"
     mock_sensor_commands="$(arg mock_sensor_commands)"
     headless_mode="$(arg headless_mode)"/>

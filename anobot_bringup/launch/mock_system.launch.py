@@ -15,7 +15,7 @@ from launch.substitutions import (
 )
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-
+from moveit_configs_utils import MoveItConfigsBuilder
 
 def package_launch(package_name, launch_file):
     return PythonLaunchDescriptionSource(
@@ -28,11 +28,21 @@ def package_launch(package_name, launch_file):
 
 
 def generate_launch_description():
+    moveit_config = (
+        MoveItConfigsBuilder(
+            "anobot",
+            package_name="anobot_moveit_config",
+        )
+        .to_moveit_configs()
+    )
     launch_moveit_rviz = LaunchConfiguration(
         "launch_moveit_rviz"
     )
     launch_mock_cycle_server = LaunchConfiguration(
         "launch_mock_cycle_server"
+    )
+    launch_ui = LaunchConfiguration(
+        "launch_ui"
     )
 
     declared_arguments = [
@@ -48,6 +58,13 @@ def generate_launch_description():
             default_value="false",
             description=(
                 "Launch the legacy mock pickup-cycle orchestration service."
+            ),
+        ),
+        DeclareLaunchArgument(
+            "launch_ui",
+            default_value="false",
+            description=(
+                "Launch the Anobot Qt operator interface."
             ),
         ),
     ]
@@ -225,6 +242,25 @@ def generate_launch_description():
         ],
     )
 
+    user_interface = TimerAction(
+        period=11.0,
+        actions=[
+            Node(
+                package="anobot_ui",
+                executable="anobot_ui",
+                name="anobot_ui",
+                output="screen",
+                condition=IfCondition(launch_ui),
+                parameters=[
+                    moveit_config.robot_description,
+                    moveit_config.robot_description_semantic,
+                    moveit_config.robot_description_kinematics,
+                    moveit_config.planning_pipelines,
+                ],
+            )
+        ],
+    )
+
     mock_pick_cycle = TimerAction(
         period=8.0,
         actions=[
@@ -251,6 +287,7 @@ def generate_launch_description():
             rod_lifecycle,
             manipulation,
             task_executor,
+            user_interface,
             mock_pick_cycle,
         ]
     )
