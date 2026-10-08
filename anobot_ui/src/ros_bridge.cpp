@@ -58,11 +58,13 @@ void RosBridge::startTask(const QString & task_name){
     if (handle != nullptr) {
       task_active_ = true;
       cancel_in_progress_ = false;
+      Q_EMIT taskActiveChanged(true);
       Q_EMIT logMessage("Task goal accepted");
     } 
     else {
       task_active_ = false;
       cancel_in_progress_ = false;
+      Q_EMIT taskActiveChanged(false);
       Q_EMIT logMessage("Task goal rejected");
     }
   };
@@ -94,6 +96,7 @@ void RosBridge::startTask(const QString & task_name){
     Q_EMIT logMessage(message);
     task_active_ = false;
     cancel_in_progress_ = false;
+    Q_EMIT taskActiveChanged(false);
     current_goal_handle_.reset();
   };
   action_client_->async_send_goal(goal, options);
@@ -145,6 +148,12 @@ void RosBridge::callOperation(const QString & operation_key){
     try {
       const auto response = future.get();
       Q_EMIT operationFinished(operation_key, response->success, QString::fromStdString(response->message));
+      if (operation_key == "rod_status") {
+        Q_EMIT rodStatusUpdated(QString::fromStdString(response->message), response->success);
+      }
+      if (response->success && (operation_key == "reset_rod" || operation_key == "attach_rod" || operation_key == "detach_rod")){
+        callOperation("rod_status");
+      }
     }
     catch (const std::exception & error){
       Q_EMIT operationFinished(operation_key, false, QString::fromStdString(error.what()));
@@ -195,6 +204,14 @@ void RosBridge::requestExecutionAllowed() {
       Q_EMIT executionAllowedUpdated(false, false);
     }
   });
+}
+
+void RosBridge::lockExecutionOnShutdown(){
+  if (planner_parameter_client_ == nullptr || !planner_parameter_client_->service_is_ready()){
+    return;
+  }
+  std::vector<rclcpp::Parameter> parameters = {rclcpp::Parameter("allow_execution", false)};
+  planner_parameter_client_->set_parameters(parameters);
 }
 
 }  // namespace anobot_ui

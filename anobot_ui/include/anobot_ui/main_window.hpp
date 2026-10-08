@@ -11,6 +11,7 @@
 #include <QTextEdit>
 #include <QTimer>
 #include <QTreeWidget>
+#include <QCloseEvent>
 #include <rclcpp/rclcpp.hpp>
 #include "anobot_ui/ros_bridge.hpp"
 #include "anobot_ui/rviz_widget.hpp"
@@ -22,7 +23,10 @@ class MainWindow : public QMainWindow{
 
 public:
   explicit MainWindow(const rclcpp::Node::SharedPtr & node, QWidget * parent = nullptr);
-  ~MainWindow() override = default;
+  ~MainWindow() override;
+
+protected:
+  void closeEvent(QCloseEvent * event) override;
 
 private:
   void buildUi();
@@ -30,6 +34,9 @@ private:
   void populateOperations();
   void populateBtTree();
   void setTreeItemStatus(const QString & node_name, const QString & status);
+  void setTaskActive(bool active);
+  void resetBtDisplay();
+  void finalizeBtDisplay(const QString & final_state);
   rclcpp::Node::SharedPtr node_;
   RosBridge * ros_bridge_{nullptr};
   RvizWidget * rviz_widget_{nullptr};
@@ -47,6 +54,10 @@ private:
   QTextEdit * log_text_{nullptr};
   QMap<QString, QTreeWidgetItem *> tree_items_;
   bool updating_execution_checkbox_{false};
+  QLabel * mode_banner_label_{nullptr};
+  QLabel * rod_status_label_{nullptr};
+  bool task_active_{false};
+  bool task_terminal_{false};
 };
 
 }  // namespace anobot_ui

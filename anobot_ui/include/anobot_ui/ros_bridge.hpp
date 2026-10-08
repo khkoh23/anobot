@@ -31,6 +31,7 @@ public:
   void callOperation(const QString & operation_key);
   void setExecutionAllowed(bool allowed);
   void requestExecutionAllowed();
+  void lockExecutionOnShutdown();
 
 Q_SIGNALS:
   void taskStateUpdated(
@@ -54,6 +55,9 @@ Q_SIGNALS:
     bool allowed,
     bool success
   );
+  void taskActiveChanged(bool active);
+  void rodStatusUpdated(const QString & status, bool success);
+
 private:
   using Trigger = std_srvs::srv::Trigger;
   void createTriggerClients();

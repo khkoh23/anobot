@@ -1,5 +1,7 @@
 #include "anobot_ui/main_window.hpp"
 
+#include <chrono>
+#include <thread>
 #include <QBrush>
 #include <QColor>
 #include <QDateTime>
@@ -9,6 +11,7 @@
 #include <QSplitter>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QMessageBox>
 
 namespace anobot_ui{
 
@@ -26,9 +29,21 @@ MainWindow::MainWindow(const rclcpp::Node::SharedPtr & node, QWidget * parent) :
   QTimer::singleShot(1000, this, [this](){
     ros_bridge_->requestExecutionAllowed();
   });
+  QTimer::singleShot(2500, this, [this](){
+    ros_bridge_->callOperation("rod_status");
+  });
   QTimer::singleShot(5000, this, [this](){
     ros_bridge_->callOperation("apply_workstation_scene");
   });
+}
+
+MainWindow::~MainWindow(){
+  if (ros_bridge_ != nullptr) {
+    ros_bridge_->lockExecutionOnShutdown();
+    rclcpp::spin_some(node_);
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    rclcpp::spin_some(node_);
+  }
 }
 
 void MainWindow::buildUi(){
@@ -36,6 +51,10 @@ void MainWindow::buildUi(){
   resize(1500, 900);
   auto * central = new QWidget(this);
   auto * root_layout = new QVBoxLayout(central);
+  mode_banner_label_ = new QLabel("DEVELOPMENT MODE: MOCK HARDWARE", central);
+  mode_banner_label_->setAlignment(Qt::AlignCenter);
+  mode_banner_label_->setStyleSheet("background-color: #e6a23c;" "color: #202020;" "font-size: 16px;" "font-weight: bold;" "padding: 7px;" "border: 1px solid #a86b00;");
+  root_layout->addWidget(mode_banner_label_);
   auto * top_splitter = new QSplitter(Qt::Horizontal, central);
   auto * camera_group = new QGroupBox("Camera / Perception", top_splitter);
   auto * camera_layout = new QVBoxLayout(camera_group);
@@ -61,6 +80,10 @@ void MainWindow::buildUi(){
   allow_execution_checkbox_-> setStyleSheet("QCheckBox {" "font-weight: bold;" "color: #aa0000;" "}");
   controls_layout->addWidget(allow_execution_checkbox_);
   execution_state_label_ = new QLabel("Execution permission: UNKNOWN", controls_group);
+  rod_status_label_ = new QLabel("Rod state: UNKNOWN", controls_group);
+  rod_status_label_->setWordWrap(true);
+  rod_status_label_->setStyleSheet("font-weight: bold;" "color: #404060;");
+  controls_layout->addWidget(rod_status_label_);
   controls_layout->addWidget(execution_state_label_);
   operation_selector_ = new QComboBox(controls_group);
   controls_layout->addWidget(operation_selector_);
@@ -69,6 +92,7 @@ void MainWindow::buildUi(){
   run_button_->setStyleSheet("background-color: #8fe8a0;" "font-weight: bold;" "min-height: 38px;");
   cancel_button_ = new QPushButton("Cancel Task", controls_group);
   cancel_button_->setStyleSheet("background-color: #f66151;" "font-weight: bold;" "min-height: 38px;");
+  cancel_button_->setEnabled(false);
   refresh_button_ = new QPushButton("Refresh Permission", controls_group);
   button_layout->addWidget(run_button_);
   button_layout->addWidget(cancel_button_);
@@ -168,6 +192,22 @@ void MainWindow::connectSignals() {
     if (updating_execution_checkbox_){
       return;
     }
+    if (checked) {
+      const auto answer = QMessageBox::warning(this,
+        "Enable trajectory execution",
+        "Enable trajectory execution on mock hardware?\n\n"
+        "The robot model will move when execution "
+        "services or behavior-tree tasks are called.",
+        QMessageBox::Yes |
+        QMessageBox::No,
+        QMessageBox::No);
+      if (answer != QMessageBox::Yes) {
+        updating_execution_checkbox_ = true;
+        allow_execution_checkbox_->setChecked(false);
+        updating_execution_checkbox_ = false;
+        return;
+      }
+    }
     ros_bridge_->setExecutionAllowed(checked);
   });
   connect(ros_bridge_, &RosBridge::executionAllowedUpdated, this, [this](bool allowed, bool success){
@@ -181,6 +221,10 @@ void MainWindow::connectSignals() {
     overall_state_label_->setText("State: " + state);
     active_node_label_->setText("Active node: " + (active_node.isEmpty() ? "-" : active_node));
     message_label_->setText("Message: " + message);
+    if (state == "SUCCESS" || state == "FAILURE" || state == "FAULT" || state == "CANCELED"){
+      finalizeBtDisplay(state);
+      ros_bridge_->callOperation("rod_status");
+    }
   });
   connect(ros_bridge_, &RosBridge::btNodeStatusUpdated, this, [this](const QString & node_name, const QString &, const QString & status){
     setTreeItemStatus(node_name, status);
@@ -193,9 +237,22 @@ void MainWindow::connectSignals() {
     const QString stamp = QDateTime::currentDateTime().toString("hh:mm:ss");
     log_text_->append(QString("[%1] %2: %3: %4").arg(stamp, operation, success ? "SUCCESS" : "FAILURE", message));
   });
+  connect(ros_bridge_, &RosBridge::taskActiveChanged, this, [this](bool active){
+    setTaskActive(active);
+    if (active) {
+      resetBtDisplay();
+    }
+  });
+  connect(ros_bridge_, &RosBridge::rodStatusUpdated, this, [this](const QString & status, bool success){
+    rod_status_label_->setText(success ? status : "Rod state: UNAVAILABLE");
+    rod_status_label_->setStyleSheet(success ? "font-weight: bold;" "color: #204080;" : "font-weight: bold;" "color: #aa0000;");
+  });
 }
 
 void MainWindow::setTreeItemStatus(const QString & node_name, const QString & status){
+  if (task_terminal_ && status == "IDLE"){
+    return;
+  }
   if (!tree_items_.contains(node_name)){
     return;
   }
@@ -216,6 +273,70 @@ void MainWindow::setTreeItemStatus(const QString & node_name, const QString & st
   }
   item->setBackground(0, QBrush(color));
   item->setBackground(1, QBrush(color));
+}
+
+void MainWindow::setTaskActive(bool active){
+  task_active_ = active;
+  run_button_->setEnabled(!active);
+  operation_selector_->setEnabled(!active);
+  cancel_button_->setEnabled(active);
+  if (active) {
+    run_button_->setText("Task Running...");
+  } 
+  else {
+    run_button_->setText("Run");
+  }
+}
+
+void MainWindow::resetBtDisplay(){
+  task_terminal_ = false;
+  for (auto iterator = tree_items_.begin(); iterator != tree_items_.end(); ++iterator){
+    setTreeItemStatus(iterator.key(), "IDLE");
+  }
+}
+
+void MainWindow::finalizeBtDisplay(const QString & final_state){
+  task_terminal_ = true;
+  if (final_state == "SUCCESS") {
+    for (auto iterator = tree_items_.begin(); iterator != tree_items_.end(); ++iterator){
+      setTreeItemStatus(iterator.key(), "SUCCESS");
+    }
+    return;
+  }
+  if (final_state == "CANCELED") {
+    if (tree_items_.contains("MockRodPickupSequence")){
+      setTreeItemStatus("MockRodPickupSequence", "IDLE");
+    }
+    return;
+  }
+  if (final_state == "FAILURE" || final_state == "FAULT"){
+    if (tree_items_.contains("MockRodPickupSequence")){
+      setTreeItemStatus("MockRodPickupSequence", "FAILURE");
+    }
+  }
+}
+
+void MainWindow::closeEvent(QCloseEvent * event){
+  if (task_active_) {
+    const auto answer = QMessageBox::warning(
+      this,
+      "Task still active",
+      "A behavior-tree task is still active.\n\n"
+      "Cancel the task and close the UI?",
+      QMessageBox::Yes |
+      QMessageBox::No,
+      QMessageBox::No);
+    if (answer != QMessageBox::Yes) {
+      event->ignore();
+      return;
+    }
+    ros_bridge_->cancelTask();
+  }
+  ros_bridge_->setExecutionAllowed(false);
+  rclcpp::spin_some(node_);
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
+  rclcpp::spin_some(node_);
+  event->accept();
 }
 
 }  // namespace anobot_ui
