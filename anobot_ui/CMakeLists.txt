@@ -13,6 +13,8 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_package(action_msgs REQUIRED)
 find_package(anobot_interfaces REQUIRED)
+find_package(controller_manager_msgs REQUIRED)
+find_package(moveit_msgs REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Widgets Xml)
 find_package(rcl_interfaces REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -23,6 +25,7 @@ find_package(rviz_ogre_vendor REQUIRED)
 find_package(rviz_rendering REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 add_executable(anobot_ui
   src/main.cpp
@@ -49,6 +52,8 @@ ament_target_dependencies(anobot_ui
   ament_index_cpp
   action_msgs
   anobot_interfaces
+  controller_manager_msgs
+  moveit_msgs
   rcl_interfaces
   rclcpp
   rclcpp_action
@@ -58,6 +63,7 @@ ament_target_dependencies(anobot_ui
   rviz_rendering
   std_msgs
   std_srvs
+  tf2_ros
 )
 
 install(

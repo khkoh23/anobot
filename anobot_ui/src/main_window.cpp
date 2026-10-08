@@ -26,6 +26,14 @@ MainWindow::MainWindow(const rclcpp::Node::SharedPtr & node, QWidget * parent) :
     rclcpp::spin_some(node_);
   });
   ros_spin_timer_->start(20);
+  health_timer_ = new QTimer(this);
+  connect(health_timer_, &QTimer::timeout, this, [this](){
+    ros_bridge_->pollSystemHealth();
+  });
+  health_timer_->start(1000);
+  QTimer::singleShot(250, this, [this](){
+    ros_bridge_->pollSystemHealth();
+  });
   QTimer::singleShot(1000, this, [this](){
     ros_bridge_->requestExecutionAllowed();
   });
@@ -61,30 +69,63 @@ void MainWindow::buildUi(){
   auto * camera_placeholder = new QLabel("RealSense and ArUco view\n" "will be connected in the real-perception milestone.", camera_group);
   camera_placeholder->setAlignment(Qt::AlignCenter);
   camera_placeholder->setStyleSheet("background-color: #252525;" "color: #dddddd;" "border: 1px solid #555555;" "font-size: 16px;");
-  camera_placeholder->setMinimumSize(480, 360);
+  camera_placeholder->setMinimumSize(420, 400);
   camera_layout->addWidget(camera_placeholder);
   auto * rviz_group = new QGroupBox("Embedded RViz", top_splitter);
   auto * rviz_layout = new QVBoxLayout(rviz_group);
   rviz_widget_ = new RvizWidget(rviz_group);
-  rviz_widget_->setMinimumSize(640, 480);
+  rviz_widget_->setMinimumSize(600, 400);
   rviz_layout->addWidget(rviz_widget_);
   top_splitter->addWidget(camera_group);
   top_splitter->addWidget(rviz_group);
   top_splitter->setStretchFactor(0, 2);
   top_splitter->setStretchFactor(1, 3);
-  root_layout->addWidget(top_splitter, 3);
+  root_layout->addWidget(top_splitter, 6);
   auto * bottom_splitter = new QSplitter(Qt::Horizontal, central);
+  auto * readiness_group = new QGroupBox("System Readiness", bottom_splitter);
+  auto * readiness_layout = new QVBoxLayout(readiness_group);
   auto * controls_group = new QGroupBox("Task and Developer Controls", bottom_splitter);
   auto * controls_layout = new QVBoxLayout(controls_group);
-  allow_execution_checkbox_ = new QCheckBox("Allow trajectory execution " "(mock hardware only)", controls_group);
+  allow_execution_checkbox_ = new QCheckBox("Allow trajectory execution", controls_group);
+  allow_execution_checkbox_->setToolTip("Allow trajectory execution on mock hardware only");
   allow_execution_checkbox_-> setStyleSheet("QCheckBox {" "font-weight: bold;" "color: #aa0000;" "}");
   controls_layout->addWidget(allow_execution_checkbox_);
   execution_state_label_ = new QLabel("Execution permission: UNKNOWN", controls_group);
   rod_status_label_ = new QLabel("Rod state: UNKNOWN", controls_group);
   rod_status_label_->setWordWrap(true);
   rod_status_label_->setStyleSheet("font-weight: bold;" "color: #404060;");
-  controls_layout->addWidget(rod_status_label_);
+  auto * health_layout = new QGridLayout();
+  const QList<QPair<QString, QString>> health_components = {
+    {"controller", "Trajectory controller"},
+    {"moveit", "MoveIt"},
+    {"workstation_marker", "Workstation marker"},
+    {"workstation_scene", "Workstation scene"},
+    {"manipulation", "Manipulation planner"},
+    {"rod_lifecycle", "Rod lifecycle"},
+    {"bt_executor", "BT executor"}
+  };
+  int health_row = 0;
+  for (const auto & component : health_components){
+    auto * name_label = new QLabel(component.second, readiness_group);
+    auto * value_label = new QLabel("UNKNOWN", readiness_group);
+    value_label->setAlignment(Qt::AlignCenter);
+    value_label->setMinimumWidth(100);
+    value_label->setStyleSheet("background-color: #888888;" "color: white;" "font-weight: bold;" "padding: 3px;" "border-radius: 3px;"); 
+    health_layout->addWidget(name_label, health_row, 0);
+    health_layout->addWidget(value_label, health_row, 1);
+    health_value_labels_[component.first] = value_label;
+    health_states_[component.first] = false;
+    ++health_row;
+  }
+  system_readiness_label_ = new QLabel("Overall readiness: CHECKING", readiness_group);
+  system_readiness_label_->setAlignment(Qt::AlignCenter);
+  system_readiness_label_->setStyleSheet("background-color: #888888;" "color: white;" "font-weight: bold;" "padding: 5px;");
+  health_layout->addWidget(system_readiness_label_, health_row, 0, 1, 2);
+  readiness_layout->addLayout(health_layout);
+  readiness_layout->addStretch();
   controls_layout->addWidget(execution_state_label_);
+  controls_layout->addWidget(rod_status_label_);
+  controls_layout->addSpacing(8);
   operation_selector_ = new QComboBox(controls_group);
   controls_layout->addWidget(operation_selector_);
   auto * button_layout = new QHBoxLayout();
@@ -98,10 +139,12 @@ void MainWindow::buildUi(){
   button_layout->addWidget(cancel_button_);
   button_layout->addWidget(refresh_button_);
   controls_layout->addLayout(button_layout);
+  controls_layout->addSpacing(8);
   overall_state_label_ = new QLabel("State: IDLE", controls_group);
   active_node_label_ = new QLabel("Active node: -", controls_group);
   message_label_ = new QLabel("Message: -", controls_group);
   message_label_->setWordWrap(true);
+  message_label_->setMaximumHeight(70);
   controls_layout->addWidget(overall_state_label_);
   controls_layout->addWidget(active_node_label_);
   controls_layout->addWidget(message_label_);
@@ -122,11 +165,18 @@ void MainWindow::buildUi(){
   monitoring_splitter->addWidget(bt_group);
   monitoring_splitter->addWidget(log_group);
   controls_group->setMinimumWidth(430);
+  bottom_splitter->addWidget(readiness_group);
   bottom_splitter->addWidget(controls_group);
   bottom_splitter->addWidget(monitoring_splitter);
   bottom_splitter->setStretchFactor(0, 1);
   bottom_splitter->setStretchFactor(1, 2);
-  root_layout->addWidget(bottom_splitter, 2);
+  readiness_group->setMinimumWidth(300);
+  controls_group->setMinimumWidth(360);
+  monitoring_splitter->setMinimumWidth(620);
+  bottom_splitter->setStretchFactor(0, 3);
+  bottom_splitter->setStretchFactor(1, 4);
+  bottom_splitter->setStretchFactor(2, 7);
+  root_layout->addWidget(bottom_splitter, 4);
   setCentralWidget(central);
 }
 
@@ -179,6 +229,24 @@ void MainWindow::connectSignals() {
   connect(run_button_, &QPushButton::clicked, this, [this](){
     const QString command = operation_selector_->currentData().toString();
     if (command.startsWith("task:")) {
+      bool all_ready = true;
+      for (auto iterator = health_states_.constBegin(); iterator != health_states_.constEnd(); ++iterator){
+        if (!iterator.value()) {
+          all_ready = false;
+          break;
+        }
+      }
+      if (!all_ready) {
+        const auto answer = QMessageBox::warning(this,
+          "System not fully ready",
+          "One or more required components are " "not ready.\n\n" "Run the mock task anyway?",
+          QMessageBox::Yes | QMessageBox::No, 
+          QMessageBox::No
+        );
+        if (answer != QMessageBox::Yes) {
+          return;
+        }
+      }
       ros_bridge_->startTask(command.mid(5));
       return;
     }
@@ -247,6 +315,9 @@ void MainWindow::connectSignals() {
     rod_status_label_->setText(success ? status : "Rod state: UNAVAILABLE");
     rod_status_label_->setStyleSheet(success ? "font-weight: bold;" "color: #204080;" : "font-weight: bold;" "color: #aa0000;");
   });
+  connect(ros_bridge_, &RosBridge::componentHealthUpdated, this, [this](const QString & component, bool ready, const QString & detail){
+    updateHealthIndicator(component, ready, detail);
+  });
 }
 
 void MainWindow::setTreeItemStatus(const QString & node_name, const QString & status){
@@ -314,6 +385,33 @@ void MainWindow::finalizeBtDisplay(const QString & final_state){
       setTreeItemStatus("MockRodPickupSequence", "FAILURE");
     }
   }
+}
+
+void MainWindow::updateHealthIndicator(const QString & component, bool ready, const QString & detail){
+  if (!health_value_labels_.contains(component)){
+    return;
+  }
+  health_states_[component] = ready;
+  health_details_[component] = detail;
+  auto * label = health_value_labels_[component];
+  label->setText(ready ? "READY" : "NOT READY");
+  label->setToolTip(detail);
+  label->setStyleSheet(ready
+    ? "background-color: #2e9d4d;" "color: white;" "font-weight: bold;" "padding: 3px;" "border-radius: 3px;"
+    : "background-color: #c63d3d;" "color: white;" "font-weight: bold;" "padding: 3px;" "border-radius: 3px;"
+  );
+  bool all_ready = true;
+  for (auto iterator = health_states_.constBegin(); iterator != health_states_.constEnd(); ++iterator){
+    if (!iterator.value()) {
+      all_ready = false;
+      break;
+    }
+  }
+  system_readiness_label_->setText(all_ready ? "Overall readiness: READY" : "Overall readiness: NOT READY");
+  system_readiness_label_->setStyleSheet(all_ready
+    ? "background-color: #2e9d4d;" "color: white;" "font-weight: bold;" "padding: 5px;"
+    : "background-color: #c68a2e;" "color: #202020;" "font-weight: bold;" "padding: 5px;"
+  );
 }
 
 void MainWindow::closeEvent(QCloseEvent * event){

@@ -12,6 +12,7 @@
 #include <QTimer>
 #include <QTreeWidget>
 #include <QCloseEvent>
+#include <QGridLayout>
 #include <rclcpp/rclcpp.hpp>
 #include "anobot_ui/ros_bridge.hpp"
 #include "anobot_ui/rviz_widget.hpp"
@@ -37,6 +38,7 @@ private:
   void setTaskActive(bool active);
   void resetBtDisplay();
   void finalizeBtDisplay(const QString & final_state);
+  void updateHealthIndicator(const QString & component, bool ready, const QString & detail);
   rclcpp::Node::SharedPtr node_;
   RosBridge * ros_bridge_{nullptr};
   RvizWidget * rviz_widget_{nullptr};
@@ -58,6 +60,11 @@ private:
   QLabel * rod_status_label_{nullptr};
   bool task_active_{false};
   bool task_terminal_{false};
+  QTimer * health_timer_{nullptr};
+  QLabel * system_readiness_label_{nullptr};
+  QMap<QString, QLabel *> health_value_labels_;
+  QMap<QString, QString> health_details_;
+  QMap<QString, bool> health_states_;
 };
 
 }  // namespace anobot_ui
