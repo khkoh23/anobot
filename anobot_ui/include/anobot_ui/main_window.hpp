@@ -13,11 +13,20 @@
 #include <QTreeWidget>
 #include <QCloseEvent>
 #include <QGridLayout>
+#include <QDomElement>
+#include <QStringList>
 #include <rclcpp/rclcpp.hpp>
 #include "anobot_ui/ros_bridge.hpp"
 #include "anobot_ui/rviz_widget.hpp"
 
 namespace anobot_ui{
+
+struct TaskDefinition{
+  QString display_name;
+  QString task_name;
+  QString xml_path;
+  QStringList required_components;
+};
 
 class MainWindow : public QMainWindow{
   Q_OBJECT
@@ -33,7 +42,16 @@ private:
   void buildUi();
   void connectSignals();
   void populateOperations();
-  void populateBtTree();
+  void populateTaskDefinitions();
+  void loadSelectedTree();
+  void loadTreeIntoWidget(const QString & xml_path);
+  QTreeWidgetItem * buildTreeItemFromDom(const QDomElement & element);
+  QString selectedTaskName() const;
+  QString selectedTreePath() const;
+  QStringList selectedTaskRequirements() const;
+  QStringList missingTaskRequirements() const;
+  void updateRunAvailability();
+  void refreshSystemState();
   void setTreeItemStatus(const QString & node_name, const QString & status);
   void setTaskActive(bool active);
   void resetBtDisplay();
@@ -65,6 +83,10 @@ private:
   QMap<QString, QLabel *> health_value_labels_;
   QMap<QString, QString> health_details_;
   QMap<QString, bool> health_states_;
+  QMap<QString, TaskDefinition> task_definitions_;
+  QString bt_root_name_;
+  QLabel * task_requirements_label_{nullptr};
+  QPushButton * refresh_system_button_{nullptr};
 };
 
 }  // namespace anobot_ui
