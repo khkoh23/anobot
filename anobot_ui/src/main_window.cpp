@@ -5,22 +5,37 @@
 #include <QBrush>
 #include <QColor>
 #include <QDateTime>
+#include <QDomDocument>
+#include <QFile>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QMessageBox>
 #include <QSplitter>
+#include <QStringList>
 #include <QVBoxLayout>
 #include <QWidget>
-#include <QMessageBox>
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <QDomDocument>
-#include <QFile>
-#include <QStringList>
 
 namespace anobot_ui{
 
 MainWindow::MainWindow(const rclcpp::Node::SharedPtr & node, QWidget * parent) : QMainWindow(parent), node_(node){
+  if (node_->has_parameter("real_perception_enabled")){
+    real_perception_enabled_ = node_->get_parameter("real_perception_enabled").as_bool();
+  } 
+  else {
+    real_perception_enabled_ = node_->declare_parameter<bool>("real_perception_enabled", false);
+  }
+  std::string camera_topic = "/camera/camera/color/image_raw";
+  if (node_->has_parameter("camera_topic")){
+    camera_topic = node_->get_parameter("camera_topic").as_string();
+  } 
+  else {
+    camera_topic = node_->declare_parameter<std::string>("camera_topic", camera_topic);
+  }
+  camera_topic_ = QString::fromStdString(camera_topic);
   ros_bridge_ = new RosBridge(node_, this);
+  ros_bridge_->setRealPerceptionEnabled(real_perception_enabled_);
   buildUi();
   populateTaskDefinitions();
   populateOperations();
@@ -59,18 +74,17 @@ void MainWindow::buildUi(){
   resize(1500, 900);
   auto * central = new QWidget(this);
   auto * root_layout = new QVBoxLayout(central);
-  mode_banner_label_ = new QLabel("DEVELOPMENT MODE: MOCK HARDWARE", central);
+  mode_banner_label_ = new QLabel(real_perception_enabled_ ? "DEVELOPMENT MODE: MOCK ROBOT + REAL PERCEPTION" : "DEVELOPMENT MODE: MOCK ROBOT + MOCK PERCEPTION", central);
   mode_banner_label_->setAlignment(Qt::AlignCenter);
   mode_banner_label_->setStyleSheet("background-color: #e6a23c;" "color: #202020;" "font-size: 16px;" "font-weight: bold;" "padding: 7px;" "border: 1px solid #a86b00;");
   root_layout->addWidget(mode_banner_label_);
   auto * top_splitter = new QSplitter(Qt::Horizontal, central);
   auto * camera_group = new QGroupBox("Camera / Perception", top_splitter);
   auto * camera_layout = new QVBoxLayout(camera_group);
-  auto * camera_placeholder = new QLabel("RealSense and ArUco view\n" "will be connected in the real-perception milestone.", camera_group);
-  camera_placeholder->setAlignment(Qt::AlignCenter);
-  camera_placeholder->setStyleSheet("background-color: #252525;" "color: #dddddd;" "border: 1px solid #555555;" "font-size: 16px;");
-  camera_placeholder->setMinimumSize(420, 400);
-  camera_layout->addWidget(camera_placeholder);
+  camera_view_widget_ = new CameraViewWidget(node_, camera_group);
+  camera_view_widget_->setTopic(camera_topic_);
+  camera_view_widget_->setMinimumSize(480, 360);
+  camera_layout->addWidget(camera_view_widget_);
   auto * rviz_group = new QGroupBox("Embedded RViz", top_splitter);
   auto * rviz_layout = new QVBoxLayout(rviz_group);
   rviz_widget_ = new RvizWidget(rviz_group);
@@ -98,6 +112,7 @@ void MainWindow::buildUi(){
   const QList<QPair<QString, QString>> health_components = {
     {"controller", "Trajectory controller"},
     {"moveit", "MoveIt"},
+    {"camera", "Camera stream"},
     {"workstation_marker", "Workstation marker"},
     {"workstation_scene", "Workstation scene"},
     {"manipulation", "Manipulation planner"},
@@ -188,6 +203,10 @@ void MainWindow::buildUi(){
 }
 
 void MainWindow::connectSignals() {
+  connect(operation_selector_, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](){
+    loadSelectedTree();
+    updateRunAvailability();
+  });
   connect(run_button_, &QPushButton::clicked, this, [this](){
     const QString command = operation_selector_->currentData().toString();
     if (command.startsWith("task:")) {
@@ -271,6 +290,9 @@ void MainWindow::connectSignals() {
   connect(refresh_system_button_, &QPushButton::clicked, this, [this](){
     refreshSystemState();
   });
+  connect(camera_view_widget_, &CameraViewWidget::streamStateChanged, this, [this](bool ready, const QString & detail){
+    updateHealthIndicator("camera", ready, detail);
+  });
 }
 
 void MainWindow::populateOperations(){
@@ -310,6 +332,9 @@ void MainWindow::populateTaskDefinitions(){
     "rod_lifecycle",
     "bt_executor"
   };
+  if (real_perception_enabled_) {
+    mock_pickup.required_components.append("camera");
+  }
   task_definitions_.insert(mock_pickup.task_name, mock_pickup);
 }
 
@@ -434,6 +459,7 @@ static QString healthDisplayName(const QString & component){
   static const QMap<QString, QString> names = {
     {"controller", "Trajectory controller"},
     {"moveit", "MoveIt"},
+    {"camera", "Camera stream"},
     {"workstation_marker", "Workstation marker"},
     {"workstation_scene", "Workstation scene"},
     {"manipulation", "Manipulation planner"},

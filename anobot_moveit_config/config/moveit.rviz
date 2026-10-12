@@ -5,7 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded: ~
       Splitter Ratio: 0.5
-    Tree Height: 250
+    Tree Height: 140
   - Class: rviz_common/Help
     Name: Help
   - Class: rviz_common/Views
@@ -334,20 +334,6 @@ Visualization Manager:
         Show Robot Visual: true
       Value: true
       Velocity_Scaling_Factor: 0.1
-    - Class: rviz_default_plugins/Image
-      Enabled: false
-      Max Value: 1
-      Median window: 5
-      Min Value: 0
-      Name: Image
-      Normalize Range: true
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /aruco_single/result
-      Value: false
     - Class: rviz_default_plugins/TF
       Enabled: true
       Filter (blacklist): ""
@@ -367,6 +353,8 @@ Visualization Manager:
           Value: false
         camera_bottom_screw_frame:
           Value: false
+        camera_color_optical_frame:
+          Value: true
         camera_link:
           Value: false
         camera_mount:
@@ -385,6 +373,12 @@ Visualization Manager:
           Value: false
         ur_base_link_inertia:
           Value: false
+        ur_camera_color_frame:
+          Value: true
+        ur_camera_color_optical_frame:
+          Value: true
+        ur_camera_link:
+          Value: true
         ur_flange:
           Value: false
         ur_forearm_link:
@@ -405,17 +399,19 @@ Visualization Manager:
           Value: false
         workstation_grasp:
           Value: true
+        workstation_marker:
+          Value: true
         workstation_marker_26_calibrated:
           Value: true
         workstation_pregrasp:
           Value: true
         world:
           Value: false
-      Marker Scale: 0.10000000149011612
+      Marker Scale: 0.20000000298023224
       Name: TF
       Show Arrows: true
       Show Axes: true
-      Show Names: false
+      Show Names: true
       Tree:
         world:
           base_footprint:
@@ -452,18 +448,6 @@ Visualization Manager:
                                     {}
       Update Interval: 0
       Value: true
-    - Class: rviz_default_plugins/MarkerArray
-      Enabled: false
-      Name: MarkerArray
-      Namespaces:
-        {}
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /workstation/markers
-      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -482,43 +466,41 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 3.289322853088379
+      Distance: 1.3517025709152222
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.01512661762535572
-        Y: -0.6894000172615051
-        Z: 1.1338627338409424
+        X: -0.0634998232126236
+        Y: -0.8744386434555054
+        Z: 1.0995570421218872
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.30979692935943604
+      Pitch: 0.5597966909408569
       Target Frame: world
       Value: Orbit (rviz_default_plugins)
-      Yaw: 3.195167303085327
+      Yaw: 2.5951640605926514
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1011
+  Height: 520
   Help:
     collapsed: false
   Hide Left Dock: false
   Hide Right Dock: false
-  Image:
-    collapsed: false
   MotionPlanning:
     collapsed: false
   MotionPlanning - Trajectory Slider:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000300000000000001ee00000395fc0200000006fb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000004400fffffffb000000100044006900730070006c006100790073010000003f0000013a000000cc00fffffffb0000000a0049006d00610067006500000001200000010d0000001700fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e0067010000017f000002550000019600fffffffb0000000800480065006c0070000000029a0000006e0000006f00fffffffb0000000a0056006900650077007300000002ad000000a9000000a900ffffff000000010000014000000395fc0200000001fb0000000c00430061006d006500720061010000003f000003950000000000000000000000020000039f00000107fc0100000001fb0000000c00430061006d00650072006100000000000000039f00000000000000000000054a0000039500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000300000000000001ee000001d1fc0200000006fb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000004400fffffffb000000100044006900730070006c0061007900730100000018000000cc000000cc00fffffffb0000000a0049006d00610067006500000001200000010d0000000000000000fb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e006701000000ea000000ff0000019600fffffffb0000000800480065006c0070000000029a0000006e0000006f00fffffffb0000000a0056006900650077007300000002ad000000a9000000a900ffffff000000010000014000000395fc0200000001fb0000000c00430061006d006500720061010000003f000003950000000000000000000000020000039f00000107fc0100000001fb0000000c00430061006d00650072006100000000000000039f00000000000000000000029b000001d100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730000000000ffffffff0000000000000000
   Views:
     collapsed: false
-  Width: 1854
-  X: 66
-  Y: 32
+  Width: 1167
+  X: 0
+  Y: 0

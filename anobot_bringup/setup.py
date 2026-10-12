@@ -27,6 +27,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'tcp_pose_publisher = anobot_bringup.tcp_pose_publisher:main'
         ],
     },
 )

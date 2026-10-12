@@ -14,7 +14,11 @@ find_package(ament_index_cpp REQUIRED)
 find_package(action_msgs REQUIRED)
 find_package(anobot_interfaces REQUIRED)
 find_package(controller_manager_msgs REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(image_transport REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(moveit_msgs REQUIRED)
+find_package(OpenCV REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Widgets Xml)
 find_package(rcl_interfaces REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -23,15 +27,18 @@ find_package(rviz_common REQUIRED)
 find_package(rviz_default_plugins REQUIRED)
 find_package(rviz_ogre_vendor REQUIRED)
 find_package(rviz_rendering REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(tf2_ros REQUIRED)
 
 add_executable(anobot_ui
+  src/camera_view_widget.cpp
   src/main.cpp
   src/main_window.cpp
   src/ros_bridge.cpp
   src/rviz_widget.cpp
+  include/anobot_ui/camera_view_widget.hpp
   include/anobot_ui/main_window.hpp
   include/anobot_ui/ros_bridge.hpp
   include/anobot_ui/rviz_widget.hpp
@@ -44,6 +51,7 @@ target_include_directories(anobot_ui
 )
 
 target_link_libraries(anobot_ui
+  cv_bridge::cv_bridge
   Qt5::Widgets
   Qt5::Xml
 )
@@ -53,7 +61,11 @@ ament_target_dependencies(anobot_ui
   action_msgs
   anobot_interfaces
   controller_manager_msgs
+  cv_bridge
+  geometry_msgs
+  image_transport
   moveit_msgs
+  OpenCV
   rcl_interfaces
   rclcpp
   rclcpp_action
@@ -61,6 +73,7 @@ ament_target_dependencies(anobot_ui
   rviz_default_plugins
   rviz_ogre_vendor
   rviz_rendering
+  sensor_msgs
   std_msgs
   std_srvs
   tf2_ros

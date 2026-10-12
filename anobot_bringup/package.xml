@@ -19,7 +19,12 @@
   <exec_depend>anobot_scene</exec_depend>
   <exec_depend>anobot_ui</exec_depend>
   <exec_depend>anobot_ur_bridge</exec_depend>
+  <exec_depend>aruco_ros</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>handeye_utility</exec_depend>
   <exec_depend>moveit_configs_utils</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>realsense2_camera</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
 
   <test_depend>ament_copyright</test_depend>

@@ -1,8 +1,9 @@
 #include "anobot_ui/ros_bridge.hpp"
-#include <action_msgs/srv/cancel_goal.hpp>
+
 #include <chrono>
 #include <utility>
 #include <vector>
+#include <action_msgs/srv/cancel_goal.hpp>
 
 using namespace std::chrono_literals;
 
@@ -24,6 +25,10 @@ RosBridge::RosBridge(const rclcpp::Node::SharedPtr & node, QObject * parent): QO
   });
   bt_log_subscription_ = node_->create_subscription<std_msgs::msg::String>("/bt_log", 10, [this](const std_msgs::msg::String::SharedPtr message){
     Q_EMIT logMessage(QString::fromStdString(message->data));
+  });
+  calibrated_pose_subscription_ = node_->create_subscription<geometry_msgs::msg::PoseStamped>("/workstation_marker/pose_base", rclcpp::SensorDataQoS(), [this](const geometry_msgs::msg::PoseStamped::SharedPtr){
+    last_calibrated_pose_arrival_ = std::chrono::steady_clock::now();
+    calibrated_pose_received_.store(true);
   });
 }
 
@@ -232,40 +237,69 @@ void RosBridge::pollSystemHealth() {
   Q_EMIT componentHealthUpdated("rod_lifecycle", rod_ready, rod_ready ? "Rod lifecycle service available" : "/scene/rod_status unavailable");
   const bool bt_ready = action_client_ != nullptr && action_client_->action_server_is_ready();
   Q_EMIT componentHealthUpdated("bt_executor", bt_ready, bt_ready ? "ExecuteTask action server available" : "/execute_task unavailable");
-  bool marker_ready = false;
-  QString marker_detail = "workstation_marker_26_calibrated missing";
+  bool transform_available = false;
+  QString transform_error;
   if (tf_buffer_ != nullptr) {
     try {
-      marker_ready = tf_buffer_->canTransform("ur_base", "workstation_marker_26_calibrated", tf2::TimePointZero, tf2::durationFromSec(0.0));
-      if (marker_ready) {
-        marker_detail = "Calibrated workstation transform available";
-      }
+      tf_buffer_->lookupTransform("ur_base", "workstation_marker_26_calibrated", tf2::TimePointZero);
+      transform_available = true;
     }
     catch (const std::exception & error) {
-      marker_ready = false;
-      marker_detail = QString::fromStdString(error.what());
+      transform_error = QString::fromStdString(error.what());
     }
   }
-  bool mock_marker_node_found = false;
-  const auto node_names = node_->get_node_names();
-  for (const auto & node_name : node_names) {
-    if (node_name == "mock_workstation_marker" || node_name == "/mock_workstation_marker"){
-      mock_marker_node_found = true;
-      break;
+  bool marker_ready = false;
+  QString marker_detail;
+  if (real_perception_enabled_) {
+    double pose_age_s = -1.0;
+    const bool pose_received = calibrated_pose_received_.load();
+    if (pose_received) {
+      pose_age_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - last_calibrated_pose_arrival_).count();
     }
-  }
-  marker_ready = mock_marker_node_found && tf_buffer_->canTransform("ur_base", "workstation_marker_26_calibrated", tf2::TimePointZero, tf2::durationFromSec(0.0));
-  if (!mock_marker_node_found) {
-    marker_detail = "Mock marker publisher is offline";
-  } 
-  else if (!marker_ready) {
-    marker_detail = "Mock marker node exists, but transform is unavailable";
+    const bool pose_fresh = pose_received && pose_age_s >= 0.0 && pose_age_s <= calibrated_marker_max_age_s_;
+    marker_ready = pose_fresh && transform_available;
+    if (!pose_received) {
+      marker_detail = "No calibrated workstation pose received";
+    } 
+    else if (!pose_fresh) {
+      marker_detail = QString("Calibrated workstation pose stale: " "%1 s").arg(pose_age_s, 0, 'f', 3);
+    } 
+    else if (!transform_available) {
+      marker_detail = "Calibrated pose is fresh, but TF is " "unavailable: " + transform_error;
+    } 
+    else {
+      marker_detail = QString("Fresh calibrated workstation pose, " "age %1 s").arg(pose_age_s, 0, 'f', 3);
+    }
   } 
   else {
-    marker_detail = "Mock calibrated workstation transform available";
+    bool mock_marker_node_found = false;
+    const auto node_names = node_->get_node_names();
+    for (const auto & node_name : node_names){
+      if (node_name == "mock_workstation_marker" || node_name == "/mock_workstation_marker"){
+        mock_marker_node_found = true;
+        break;
+      }
+    }
+    marker_ready = mock_marker_node_found && transform_available;
+    if (!mock_marker_node_found) {
+      marker_detail = "Mock marker publisher is offline";
+    } 
+    else if (!transform_available) {
+      marker_detail = "Mock calibrated workstation " "transform unavailable";
+    } 
+    else {
+      marker_detail = "Mock calibrated workstation " "transform available";
+    }
   }
   Q_EMIT componentHealthUpdated("workstation_marker", marker_ready, marker_detail);
   requestControllerStatus();
+}
+
+void RosBridge::setRealPerceptionEnabled(bool enabled){
+  real_perception_enabled_ = enabled;
+  Q_EMIT logMessage(enabled
+    ? "Marker readiness mode: real perception"
+    : "Marker readiness mode: mock static transform");
 }
 
 void RosBridge::requestControllerStatus(){

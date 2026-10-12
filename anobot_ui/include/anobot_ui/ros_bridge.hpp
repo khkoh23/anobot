@@ -1,22 +1,24 @@
 #ifndef ANOBOT_UI__ROS_BRIDGE_HPP_
 #define ANOBOT_UI__ROS_BRIDGE_HPP_
 
+#include <atomic>
+#include <chrono>
 #include <map>
 #include <memory>
 #include <string>
-#include <atomic>
 #include <QObject>
 #include <QString>
 #include <controller_manager_msgs/srv/list_controllers.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <moveit_msgs/srv/get_planning_scene.hpp>
-#include <tf2_ros/buffer.h>
-#include <tf2_ros/transform_listener.h>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <rclcpp_action/exceptions.hpp>
 #include <rclcpp/parameter_client.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <std_srvs/srv/trigger.hpp>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
 #include "anobot_interfaces/action/execute_task.hpp"
 #include "anobot_interfaces/msg/bt_node_status.hpp"
 #include "anobot_interfaces/msg/bt_state.hpp"
@@ -38,6 +40,7 @@ public:
   void requestExecutionAllowed();
   void lockExecutionOnShutdown();
   void pollSystemHealth();
+  void setRealPerceptionEnabled(bool enabled);
 
 Q_SIGNALS:
   void taskStateUpdated(
@@ -83,12 +86,17 @@ private:
   rclcpp::Subscription<anobot_interfaces::msg::BtNodeStatus>::SharedPtr bt_node_subscription_;
   rclcpp::Subscription<anobot_interfaces::msg::BtState>::SharedPtr bt_state_subscription_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr bt_log_subscription_;
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr calibrated_pose_subscription_;
   void requestControllerStatus();
   rclcpp::Client<controller_manager_msgs::srv::ListControllers>::SharedPtr controller_list_client_;
   rclcpp::Client<moveit_msgs::srv::GetPlanningScene>::SharedPtr moveit_scene_client_;
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
   std::atomic<bool> controller_request_active_{false};
+  bool real_perception_enabled_{false};
+  double calibrated_marker_max_age_s_{1.0};
+  std::chrono::steady_clock::time_point last_calibrated_pose_arrival_;
+  std::atomic<bool> calibrated_pose_received_{false};
 };
 
 }  // namespace anobot_ui

@@ -2,18 +2,12 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import (
-    DeclareLaunchArgument,
-    IncludeLaunchDescription,
-    TimerAction,
-)
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import (
-    LaunchConfiguration,
-    PathJoinSubstitution,
-)
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 from moveit_configs_utils import MoveItConfigsBuilder
 
@@ -28,44 +22,48 @@ def package_launch(package_name, launch_file):
 
 
 def generate_launch_description():
-    moveit_config = (
-        MoveItConfigsBuilder(
-            "anobot",
-            package_name="anobot_moveit_config",
-        )
+    moveit_config = (MoveItConfigsBuilder(
+        "anobot",
+        package_name="anobot_moveit_config",)
         .to_moveit_configs()
     )
-    launch_moveit_rviz = LaunchConfiguration(
-        "launch_moveit_rviz"
-    )
-    launch_mock_cycle_server = LaunchConfiguration(
-        "launch_mock_cycle_server"
-    )
-    launch_ui = LaunchConfiguration(
-        "launch_ui"
-    )
+    launch_moveit_rviz = LaunchConfiguration("launch_moveit_rviz")
+    launch_mock_cycle_server = LaunchConfiguration("launch_mock_cycle_server")
+    launch_ui = LaunchConfiguration("launch_ui")
+    use_fake_workstation_marker = LaunchConfiguration("use_fake_workstation_marker")
+    launch_real_perception = LaunchConfiguration("launch_real_perception")
+    realsense_serial_no = LaunchConfiguration("realsense_serial_no")
 
     declared_arguments = [
         DeclareLaunchArgument(
             "launch_moveit_rviz",
             default_value="true",
-            description=(
-                "Launch standalone MoveIt RViz."
-            ),
+            description=("Launch standalone MoveIt RViz."),
         ),
         DeclareLaunchArgument(
             "launch_mock_cycle_server",
             default_value="false",
-            description=(
-                "Launch the legacy mock pickup-cycle orchestration service."
-            ),
+            description=("Launch the legacy mock pickup-cycle orchestration service."),
         ),
         DeclareLaunchArgument(
             "launch_ui",
             default_value="false",
-            description=(
-                "Launch the Anobot Qt operator interface."
-            ),
+            description=("Launch the Anobot Qt operator interface."),
+        ),
+        DeclareLaunchArgument(
+            "use_fake_workstation_marker",
+            default_value="true",
+            description=("Publish the fixed mock calibrated workstation-marker transform."),
+        ),
+        DeclareLaunchArgument(
+            "launch_real_perception",
+            default_value="false",
+            description=("Launch RealSense, ArUco and calibrated workstation-marker publishing."),
+        ),
+        DeclareLaunchArgument(
+            "realsense_serial_no",
+            default_value="",
+            description=("RealSense serial number. Leave empty to use the first available camera."),
         ),
     ]
 
@@ -149,12 +147,31 @@ def generate_launch_description():
                     "workstation_marker_26_calibrated",
                 ],
                 output="screen",
+                condition=IfCondition(use_fake_workstation_marker),
+            )
+        ],
+    )
+
+    real_perception = TimerAction(
+        period=4.0,
+        actions=[
+            IncludeLaunchDescription(
+                package_launch(
+                    "anobot_bringup",
+                    "real_perception.launch.py",
+                ),
+                launch_arguments={
+                    "serial_no": realsense_serial_no,
+                }.items(),
+                condition=IfCondition(
+                    launch_real_perception
+                ),
             )
         ],
     )
 
     grasp_pose = TimerAction(
-        period=5.5,
+        period=9.0,
         actions=[
             Node(
                 package="anobot_manipulation",
@@ -177,7 +194,7 @@ def generate_launch_description():
     # RViz starts before this scene node to avoid the
     # late-discovery problem currently observed.
     workstation_scene = TimerAction(
-        period=6.0,
+        period=10.0,
         actions=[
             Node(
                 package="anobot_scene",
@@ -198,7 +215,7 @@ def generate_launch_description():
     )
 
     rod_lifecycle = TimerAction(
-        period=6.5,
+        period=10.5,
         actions=[
             Node(
                 package="anobot_scene",
@@ -219,7 +236,7 @@ def generate_launch_description():
     )
 
     manipulation = TimerAction(
-        period=7.0,
+        period=11.0,
         actions=[
             IncludeLaunchDescription(
                 package_launch(
@@ -231,7 +248,7 @@ def generate_launch_description():
     )
 
     task_executor = TimerAction(
-        period=9.0,
+        period=14.0,
         actions=[
             IncludeLaunchDescription(
                 package_launch(
@@ -243,7 +260,7 @@ def generate_launch_description():
     )
 
     user_interface = TimerAction(
-        period=11.0,
+        period=16.0,
         actions=[
             Node(
                 package="anobot_ui",
@@ -256,6 +273,18 @@ def generate_launch_description():
                     moveit_config.robot_description_semantic,
                     moveit_config.robot_description_kinematics,
                     moveit_config.planning_pipelines,
+                    {
+                        "real_perception_enabled": (
+                            ParameterValue(
+                                launch_real_perception,
+                                value_type=bool,
+                            )
+                        ),
+                        "camera_topic": (
+                            # "/camera/camera/color/image_raw"
+                            "/aruco_single/result"
+                        ),
+                    },
                 ],
             )
         ],
@@ -281,6 +310,7 @@ def generate_launch_description():
             world_to_base,
             move_group,
             rviz,
+            real_perception,
             fake_workstation_marker,
             grasp_pose,
             workstation_scene,

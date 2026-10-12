@@ -3,19 +3,20 @@
 
 #include <memory>
 #include <QCheckBox>
+#include <QCloseEvent>
 #include <QComboBox>
+#include <QDomElement>
+#include <QGridLayout>
 #include <QLabel>
 #include <QMainWindow>
 #include <QMap>
 #include <QPushButton>
+#include <QStringList>
 #include <QTextEdit>
 #include <QTimer>
 #include <QTreeWidget>
-#include <QCloseEvent>
-#include <QGridLayout>
-#include <QDomElement>
-#include <QStringList>
 #include <rclcpp/rclcpp.hpp>
+#include "anobot_ui/camera_view_widget.hpp"
 #include "anobot_ui/ros_bridge.hpp"
 #include "anobot_ui/rviz_widget.hpp"
 
@@ -87,6 +88,9 @@ private:
   QString bt_root_name_;
   QLabel * task_requirements_label_{nullptr};
   QPushButton * refresh_system_button_{nullptr};
+  CameraViewWidget * camera_view_widget_{nullptr};
+  QString camera_topic_{"/camera/camera/color/image_raw"};
+  bool real_perception_enabled_{false};
 };
 
 }  // namespace anobot_ui
