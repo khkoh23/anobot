@@ -47,38 +47,36 @@ Q_SIGNALS:
     const QString & task_name,
     const QString & overall_state,
     const QString & active_node,
-    const QString & message
-  );
+    const QString & message);
   void btNodeStatusUpdated(
     const QString & node_name,
     const QString & node_type,
-    const QString & status
-  );
+    const QString & status);
   void logMessage(const QString & message);
   void operationFinished(
     const QString & operation_key,
     bool success,
-    const QString & message
-  );
+    const QString & message);
   void executionAllowedUpdated(
     bool allowed,
-    bool success
-  );
+    bool success);
   void taskActiveChanged(bool active);
   void rodStatusUpdated(const QString & status, bool success);
   void componentHealthUpdated(
     const QString & component,
     bool ready,
-    const QString & detail
-  );
+    const QString & detail);
   void acquiredWorkstationUpdated(
     bool acquired,
-    const QString & detail
-  );
+    const QString & detail);
+  void workstationSceneStateUpdated(
+    bool applied,
+    const QString & detail);
 
 private:
   using Trigger = std_srvs::srv::Trigger;
   void createTriggerClients();
+  void requestWorkstationSceneStatus();
   void requestControllerStatus();
   void requestAcquiredWorkstationStatus();
   rclcpp::Node::SharedPtr node_;
@@ -103,6 +101,7 @@ private:
   std::chrono::steady_clock::time_point last_calibrated_pose_arrival_;
   std::atomic<bool> calibrated_pose_received_{false};
   std::atomic<bool> acquisition_status_request_active_{false};
+  std::atomic<bool> scene_status_request_active_{false};
 };
 
 }  // namespace anobot_ui

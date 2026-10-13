@@ -39,6 +39,7 @@ void RosBridge::createTriggerClients(){
     {"workstation_acquisition_status", "/perception/workstation_status"},
     {"apply_workstation_scene", "/scene/apply_workstation_scene"},
     {"remove_workstation_scene", "/scene/remove_workstation_scene"},
+    {"workstation_scene_status", "/scene/workstation_scene_status"},
     {"reset_rod", "/scene/reset_rod_on_workstation"},
     {"rod_status", "/scene/rod_status"},
     {"plan_pregrasp", "/manipulation/plan_pregrasp"},
@@ -80,6 +81,34 @@ void RosBridge::requestAcquiredWorkstationStatus(){
     acquisition_status_request_active_ = false;
     Q_EMIT acquiredWorkstationUpdated(acquired, detail);
   });
+}
+
+void RosBridge::requestWorkstationSceneStatus(){
+  const auto iterator = service_clients_.find("workstation_scene_status");
+  if (iterator == service_clients_.end() || !iterator->second->service_is_ready()){
+    Q_EMIT workstationSceneStateUpdated(false, "/scene/workstation_scene_status unavailable");
+    return;
+  }
+  bool expected = false;
+  if (!scene_status_request_active_.compare_exchange_strong(expected, true)){
+    return;
+  }
+  auto request = std::make_shared<Trigger::Request>();
+  iterator->second->async_send_request(request, [this](rclcpp::Client<Trigger>::SharedFuture future){
+      bool applied = false;
+      QString detail = "Workstation scene state: NOT_APPLIED";
+      try {
+        const auto response = future.get();
+        applied = response->success && response->message.find("Workstation scene state: APPLIED") != std::string::npos;
+        detail = QString::fromStdString(response->message);
+      }
+      catch (const std::exception & error) {
+        applied = false;
+        detail = QString::fromStdString(error.what());
+      }
+      scene_status_request_active_ = false;
+      Q_EMIT workstationSceneStateUpdated(applied, detail);
+    });
 }
 
 void RosBridge::requestControllerStatus(){
@@ -223,9 +252,6 @@ void RosBridge::callOperation(const QString & operation_key){
       if (operation_key == "rod_status") {
         Q_EMIT rodStatusUpdated(QString::fromStdString(response->message), response->success);
       }
-      if (operation_key == "acquire_workstation" && response->success){
-        callOperation("apply_workstation_scene");
-      }
       if (operation_key == "acquire_workstation" || "clear_workstation"){
         requestAcquiredWorkstationStatus();
       }
@@ -295,9 +321,6 @@ void RosBridge::lockExecutionOnShutdown(){
 void RosBridge::pollSystemHealth() {
   const bool moveit_ready = moveit_scene_client_ != nullptr && moveit_scene_client_->service_is_ready();
   Q_EMIT componentHealthUpdated("moveit", moveit_ready, moveit_ready ? "Planning-scene service available" : "/get_planning_scene unavailable");
-  const auto scene_iterator = service_clients_.find("apply_workstation_scene");
-  const bool scene_ready = scene_iterator != service_clients_.end() && scene_iterator->second->service_is_ready();
-  Q_EMIT componentHealthUpdated("workstation_scene", scene_ready, scene_ready ? "Scene refresh service available" : "/scene/apply_workstation_scene unavailable");
   const auto manipulation_iterator = service_clients_.find("plan_pregrasp");
   const bool manipulation_ready = manipulation_iterator != service_clients_.end() && manipulation_iterator->second->service_is_ready();
   Q_EMIT componentHealthUpdated("manipulation", manipulation_ready, manipulation_ready ? "Manipulation planner available" : "/manipulation/plan_pregrasp unavailable");
@@ -362,6 +385,7 @@ void RosBridge::pollSystemHealth() {
   }
   Q_EMIT componentHealthUpdated("workstation_marker", marker_ready, marker_detail);
   requestAcquiredWorkstationStatus();
+  requestWorkstationSceneStatus();
   requestControllerStatus();
 }
 

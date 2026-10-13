@@ -5,6 +5,7 @@ import numpy as np
 import rclpy
 import trimesh
 from ament_index_python.packages import get_package_share_directory
+from copy import deepcopy
 from geometry_msgs.msg import Point, Pose
 from moveit_msgs.msg import CollisionObject, PlanningScene
 from moveit_msgs.srv import ApplyPlanningScene
@@ -63,6 +64,12 @@ class WorkstationScene(Node):
             self.remove_scene_callback,
             callback_group=self.callback_group,
         )
+        self.status_service = self.create_service(
+            Trigger,
+            "/scene/workstation_scene_status",
+            self.scene_status_callback,
+            callback_group=self.callback_group,
+        )
         self.tf_buffer = Buffer(
             cache_time=Duration(seconds=10.0)
         )
@@ -81,6 +88,7 @@ class WorkstationScene(Node):
         )
         self.tank_mesh = self.load_tank_mesh()
         self.registered = False
+        self.applied_reference_transform = None
         if not self.apply_client.wait_for_service(timeout_sec=15.0):
             raise RuntimeError("/apply_planning_scene is unavailable")
         self.registration_timer = None
@@ -197,18 +205,64 @@ class WorkstationScene(Node):
         collision.operation = CollisionObject.ADD
         return collision
 
-    def validate_reference_frame(self):
+    @staticmethod
+    def translation_distance(first, second):
+        dx = (first.transform.translation.x - second.transform.translation.x)
+        dy = (first.transform.translation.y - second.transform.translation.y)
+        dz = (first.transform.translation.z - second.transform.translation.z)
+        return math.sqrt(dx * dx + dy * dy + dz * dz)
+
+    @staticmethod
+    def quaternion_angle_deg(first, second):
+        first_q = (
+            first.transform.rotation.x,
+            first.transform.rotation.y,
+            first.transform.rotation.z,
+            first.transform.rotation.w,
+        )
+        second_q = (
+            second.transform.rotation.x,
+            second.transform.rotation.y,
+            second.transform.rotation.z,
+            second.transform.rotation.w,
+        )
+        first_norm = math.sqrt(sum(value * value for value in first_q))
+        second_norm = math.sqrt(sum(value * value for value in second_q))
+        if first_norm < 1.0e-12 or second_norm < 1.0e-12:
+            return float("inf")
+        dot = abs(
+            sum(
+                first_value * second_value
+                for first_value, second_value
+                in zip(first_q, second_q)
+            )
+            / (first_norm * second_norm)
+        )
+        dot = max(-1.0, min(1.0, dot))
+        return math.degrees(2.0 * math.acos(dot))
+
+    def lookup_reference_transform(self):
         planning_frame = str(self.get_parameter("planning_frame").value)
         reference_frame = str(self.get_parameter("frame_id").value)
         timeout_s = float(self.get_parameter("transform_timeout_s").value)
-        available = self.tf_buffer.can_transform(
+        return self.tf_buffer.lookup_transform(
             planning_frame,
             reference_frame,
             Time(),
             timeout=Duration(seconds=timeout_s),
         )
-        if not available:
-            raise RuntimeError("Cannot apply workstation scene: " f"transform {planning_frame} -> " f"{reference_frame} is unavailable")
+
+    def validate_reference_frame(self):
+        try:
+            return self.lookup_reference_transform()
+        except Exception as error:
+            planning_frame = str(self.get_parameter("planning_frame").value)
+            reference_frame = str(self.get_parameter("frame_id").value)
+            raise RuntimeError(
+                "Cannot apply workstation scene: "
+                f"transform {planning_frame} -> "
+                f"{reference_frame} is unavailable"
+            ) from error
 
     def make_remove_collision_object(self):
         collision = CollisionObject()
@@ -230,10 +284,11 @@ class WorkstationScene(Node):
         if not result.success:
             raise RuntimeError("MoveIt rejected workstation-scene " "removal")
         self.registered = False
+        self.applied_reference_transform = None
         self.get_logger().info("Removed tank collision object: " f"{self.get_parameter('object_id').value}")
 
     async def apply_tank_scene(self):
-        self.validate_reference_frame()
+        reference_transform = (self.validate_reference_frame())
         scene = PlanningScene()
         scene.is_diff = True
         scene.world.collision_objects.append(self.make_collision_object())
@@ -244,6 +299,7 @@ class WorkstationScene(Node):
             raise RuntimeError("No response while applying " "workstation scene")
         if not result.success:
             raise RuntimeError("MoveIt rejected workstation-scene " "application")
+        self.applied_reference_transform = deepcopy(reference_transform)
         self.registered = True
         self.get_logger().info(
             "Applied tank collision object: "
@@ -294,6 +350,43 @@ class WorkstationScene(Node):
             response.success = False
             response.message = str(error)
             self.get_logger().error(f"Remove workstation scene failed: " f"{error}")
+        return response
+
+    def scene_status_callback(self, request, response,):
+        del request
+        if (not self.registered or self.applied_reference_transform is None):
+            response.success = False
+            response.message = ("Workstation scene state: NOT_APPLIED")
+            return response
+        try:
+            current_transform = (self.lookup_reference_transform())
+        except Exception:
+            response.success = False
+            response.message = ("Workstation scene state: OUTDATED; " "acquired reference frame unavailable")
+            return response
+        translation_difference_m = (self.translation_distance(current_transform, self.applied_reference_transform,))
+        rotation_difference_deg = (self.quaternion_angle_deg(current_transform, self.applied_reference_transform,))
+        # These tolerances only detect whether acquisition
+        # changed after scene application. They are not
+        # perception-quality limits.
+        pose_matches = (translation_difference_m <= 0.0001 and rotation_difference_deg <= 0.01)
+        if not pose_matches:
+            response.success = False
+            response.message = (
+                "Workstation scene state: OUTDATED; "
+                "acquired pose changed; "
+                "translation_difference="
+                f"{translation_difference_m * 1000.0:.3f} mm; "
+                "rotation_difference="
+                f"{rotation_difference_deg:.3f} deg"
+            )
+            return response
+        response.success = True
+        response.message = (
+            "Workstation scene state: APPLIED; "
+            f"frame={self.get_parameter('frame_id').value}; "
+            f"object={self.get_parameter('object_id').value}"
+        )
         return response
 
     def publish_marker(self):

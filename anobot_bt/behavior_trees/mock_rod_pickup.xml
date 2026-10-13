@@ -3,6 +3,7 @@
   <BehaviorTree ID="MockRodPickup">
     <Sequence name="MockRodPickupSequence">
       <VerifyWorkstationAcquired/>
+      <VerifyWorkstationSceneApplied/>
       <ResetRod message="{reset_message}"/>
       <VerifyRodAtWorkstation message="{workstation_status}"/>
       <PlanPregrasp message="{plan_pregrasp_message}"/>

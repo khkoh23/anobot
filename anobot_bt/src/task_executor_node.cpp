@@ -51,6 +51,7 @@ TaskExecutorNode::TaskExecutorNode() : Node("anobot_task_executor"){
 void TaskExecutorNode::registerBtNodes(){
   const std::unordered_map<std::string, ServiceNodeDefinition> service_map = {
     {"VerifyWorkstationAcquired", {"/perception/workstation_status", "Workstation state: ACQUIRED"}},
+    {"VerifyWorkstationSceneApplied", {"/scene/workstation_scene_status", "Workstation scene state: APPLIED"}},
     {"ResetRod", {"/scene/reset_rod_on_workstation", ""}},
     {"VerifyRodAtWorkstation", {"/scene/rod_status", "WORLD_OBJECT"}},
     {"PlanPregrasp", {"/manipulation/plan_pregrasp", ""}},

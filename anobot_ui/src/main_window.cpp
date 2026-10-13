@@ -225,21 +225,21 @@ void MainWindow::connectSignals() {
         QMessageBox::warning(
           this,
           "Acquisition blocked",
-          "Cannot reacquire the workstation "
-          "while a task is active.");
+          "Cannot reacquire while a task is active.");
         return;
       }
       const auto answer = QMessageBox::question(
         this,
         "Acquire workstation",
         "Acquire a stable workstation pose "
-        "and update the collision scene?",
+        "and apply the collision scene?",
         QMessageBox::Yes |
         QMessageBox::No,
         QMessageBox::Yes);
       if (answer != QMessageBox::Yes) {
         return;
       }
+      setWorkstationWorkflow(WorkstationWorkflow::ACQUIRING);
       ros_bridge_->callOperation("acquire_workstation");
       return;
     }
@@ -248,15 +248,14 @@ void MainWindow::connectSignals() {
         QMessageBox::warning(
           this,
           "Clear blocked",
-          "Cannot clear the acquired workstation "
-          "while a task is active.");
+          "Cannot clear while a task is active.");
         return;
       }
       const auto answer =
         QMessageBox::warning(
         this,
         "Clear acquired workstation",
-        "Remove the workstation collision scene "
+        "Remove the collision scene "
         "and clear the acquired workstation pose?",
         QMessageBox::Yes |
         QMessageBox::No,
@@ -264,12 +263,10 @@ void MainWindow::connectSignals() {
       if (answer != QMessageBox::Yes) {
         return;
       }
+      setWorkstationWorkflow(WorkstationWorkflow::REMOVING_SCENE);
       // Removal is asynchronous. Give MoveIt a short
       // opportunity to process removal before clearing TF.
       ros_bridge_->callOperation("remove_workstation_scene");
-      QTimer::singleShot(300, this, [this](){
-        ros_bridge_->callOperation("clear_workstation");
-      });
       return;
     }
     if (command.startsWith("service:")) {
@@ -326,6 +323,31 @@ void MainWindow::connectSignals() {
   connect(ros_bridge_, &RosBridge::operationFinished, this, [this](const QString & operation, bool success, const QString & message){
     const QString stamp = QDateTime::currentDateTime().toString("hh:mm:ss");
     log_text_->append(QString("[%1] %2: %3: %4").arg(stamp, operation, success ? "SUCCESS" : "FAILURE", message));
+    if (workstation_workflow_ == WorkstationWorkflow::ACQUIRING && operation == "acquire_workstation"){
+      if (!success) {
+        finishWorkstationWorkflow(false, message);
+        return;
+      }
+      setWorkstationWorkflow(WorkstationWorkflow::APPLYING_SCENE);
+      ros_bridge_->callOperation("apply_workstation_scene");
+      return;
+    }
+    if (workstation_workflow_ == WorkstationWorkflow::APPLYING_SCENE && operation == "apply_workstation_scene"){
+      finishWorkstationWorkflow(success, message);
+      return;
+    }
+    if (workstation_workflow_ == WorkstationWorkflow::REMOVING_SCENE && operation == "remove_workstation_scene"){
+      if (!success) {
+        finishWorkstationWorkflow(false, message);
+        return;
+      }
+      setWorkstationWorkflow(WorkstationWorkflow::CLEARING_ACQUISITION);
+      ros_bridge_->callOperation("clear_workstation");
+      return;
+    }
+    if (workstation_workflow_ == WorkstationWorkflow::CLEARING_ACQUISITION && operation == "clear_workstation"){
+      finishWorkstationWorkflow(success, message);
+    }
   });
   connect(ros_bridge_, &RosBridge::taskActiveChanged, this, [this](bool active){
     setTaskActive(active);
@@ -348,6 +370,9 @@ void MainWindow::connectSignals() {
   });
   connect(ros_bridge_, &RosBridge::acquiredWorkstationUpdated, this, [this](bool acquired, const QString & detail){
     updateHealthIndicator("acquired_workstation", acquired, detail);
+  });
+  connect(ros_bridge_, &RosBridge::workstationSceneStateUpdated, this, [this](bool applied, const QString & detail){
+    updateHealthIndicator("workstation_scene", applied, detail);
   });
 }
 
@@ -665,6 +690,42 @@ void MainWindow::updateHealthIndicator(const QString & component, bool ready, co
     : "background-color: #c68a2e;" "color: #202020;" "font-weight: bold;" "padding: 5px;"
   );
   updateRunAvailability();
+}
+
+void MainWindow::setWorkstationWorkflow(WorkstationWorkflow workflow){
+  workstation_workflow_ = workflow;
+  const bool active = workflow != WorkstationWorkflow::NONE;
+  operation_selector_->setEnabled(!active && !task_active_);
+  run_button_->setEnabled(!active && !task_active_);
+  refresh_system_button_->setEnabled(!active);
+  if (!active) {
+    run_button_->setText("Run");
+    updateRunAvailability();
+    return;
+  }
+  switch (workflow) {
+    case WorkstationWorkflow::ACQUIRING:
+      run_button_->setText("Acquiring...");
+      break;
+    case WorkstationWorkflow::APPLYING_SCENE:
+      run_button_->setText("Applying Scene...");
+      break;
+    case WorkstationWorkflow::REMOVING_SCENE:
+      run_button_->setText("Removing Scene...");
+      break;
+    case WorkstationWorkflow::CLEARING_ACQUISITION:
+      run_button_->setText("Clearing...");
+      break;
+    default:
+      break;
+  }
+}
+
+void MainWindow::finishWorkstationWorkflow(bool success, const QString & message){
+  setWorkstationWorkflow(WorkstationWorkflow::NONE);
+  ros_bridge_->pollSystemHealth();
+  const QString stamp = QDateTime::currentDateTime().toString("hh:mm:ss");
+  log_text_->append(QString("[%1] Workstation workflow: %2: %3").arg(stamp, success ? "SUCCESS" : "FAILURE", message));
 }
 
 void MainWindow::closeEvent(QCloseEvent * event){

@@ -40,6 +40,7 @@ protected:
   void closeEvent(QCloseEvent * event) override;
 
 private:
+  enum class WorkstationWorkflow{NONE, ACQUIRING, APPLYING_SCENE, REMOVING_SCENE, CLEARING_ACQUISITION};
   void buildUi();
   void connectSignals();
   void populateOperations();
@@ -58,6 +59,8 @@ private:
   void resetBtDisplay();
   void finalizeBtDisplay(const QString & final_state);
   void updateHealthIndicator(const QString & component, bool ready, const QString & detail);
+  void setWorkstationWorkflow(WorkstationWorkflow workflow);
+  void finishWorkstationWorkflow(bool success, const QString & message);
   rclcpp::Node::SharedPtr node_;
   RosBridge * ros_bridge_{nullptr};
   RvizWidget * rviz_widget_{nullptr};
@@ -91,6 +94,7 @@ private:
   CameraViewWidget * camera_view_widget_{nullptr};
   QString camera_topic_{"/camera/camera/color/image_raw"};
   bool real_perception_enabled_{false};
+  WorkstationWorkflow workstation_workflow_{WorkstationWorkflow::NONE};
 };
 
 }  // namespace anobot_ui
