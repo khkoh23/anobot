@@ -113,7 +113,8 @@ void MainWindow::buildUi(){
     {"controller", "Trajectory controller"},
     {"moveit", "MoveIt"},
     {"camera", "Camera stream"},
-    {"workstation_marker", "Workstation marker"},
+    {"workstation_marker", "Live marker"},
+    {"acquired_workstation", "Acquired workstation"},
     {"workstation_scene", "Workstation scene"},
     {"manipulation", "Manipulation planner"},
     {"rod_lifecycle", "Rod lifecycle"},
@@ -219,6 +220,58 @@ void MainWindow::connectSignals() {
       ros_bridge_->startTask(command.mid(5));
       return;
     }
+    if (command == "workflow:acquire_workstation"){
+      if (task_active_) {
+        QMessageBox::warning(
+          this,
+          "Acquisition blocked",
+          "Cannot reacquire the workstation "
+          "while a task is active.");
+        return;
+      }
+      const auto answer = QMessageBox::question(
+        this,
+        "Acquire workstation",
+        "Acquire a stable workstation pose "
+        "and update the collision scene?",
+        QMessageBox::Yes |
+        QMessageBox::No,
+        QMessageBox::Yes);
+      if (answer != QMessageBox::Yes) {
+        return;
+      }
+      ros_bridge_->callOperation("acquire_workstation");
+      return;
+    }
+    if (command == "workflow:clear_workstation"){
+      if (task_active_) {
+        QMessageBox::warning(
+          this,
+          "Clear blocked",
+          "Cannot clear the acquired workstation "
+          "while a task is active.");
+        return;
+      }
+      const auto answer =
+        QMessageBox::warning(
+        this,
+        "Clear acquired workstation",
+        "Remove the workstation collision scene "
+        "and clear the acquired workstation pose?",
+        QMessageBox::Yes |
+        QMessageBox::No,
+        QMessageBox::No);
+      if (answer != QMessageBox::Yes) {
+        return;
+      }
+      // Removal is asynchronous. Give MoveIt a short
+      // opportunity to process removal before clearing TF.
+      ros_bridge_->callOperation("remove_workstation_scene");
+      QTimer::singleShot(300, this, [this](){
+        ros_bridge_->callOperation("clear_workstation");
+      });
+      return;
+    }
     if (command.startsWith("service:")) {
       ros_bridge_->callOperation(command.mid(8));
     }
@@ -293,6 +346,9 @@ void MainWindow::connectSignals() {
   connect(camera_view_widget_, &CameraViewWidget::streamStateChanged, this, [this](bool ready, const QString & detail){
     updateHealthIndicator("camera", ready, detail);
   });
+  connect(ros_bridge_, &RosBridge::acquiredWorkstationUpdated, this, [this](bool acquired, const QString & detail){
+    updateHealthIndicator("acquired_workstation", acquired, detail);
+  });
 }
 
 void MainWindow::populateOperations(){
@@ -301,6 +357,10 @@ void MainWindow::populateOperations(){
     const auto & definition = iterator.value();
     operation_selector_->addItem(definition.display_name, "task:" + definition.task_name);
   }
+  operation_selector_->insertSeparator(operation_selector_->count());
+  operation_selector_->addItem("Acquire / Refresh Workstation", "workflow:acquire_workstation");
+  operation_selector_->addItem("Clear Acquired Workstation", "workflow:clear_workstation");
+  operation_selector_->addItem("Show Acquisition Status", "service:workstation_acquisition_status");
   operation_selector_->insertSeparator(operation_selector_->count());
   operation_selector_->addItem("Apply workstation collision scene", "service:apply_workstation_scene");
   operation_selector_->addItem("Reset rod on workstation", "service:reset_rod");
@@ -327,6 +387,7 @@ void MainWindow::populateTaskDefinitions(){
     "controller",
     "moveit",
     "workstation_marker",
+    "acquired_workstation",
     "workstation_scene",
     "manipulation",
     "rod_lifecycle",
@@ -460,7 +521,8 @@ static QString healthDisplayName(const QString & component){
     {"controller", "Trajectory controller"},
     {"moveit", "MoveIt"},
     {"camera", "Camera stream"},
-    {"workstation_marker", "Workstation marker"},
+    {"workstation_marker", "Live marker"},
+    {"acquired_workstation", "Acquired workstation"},
     {"workstation_scene", "Workstation scene"},
     {"manipulation", "Manipulation planner"},
     {"rod_lifecycle", "Rod lifecycle"},
@@ -507,7 +569,6 @@ void MainWindow::refreshSystemState(){
   ros_bridge_->pollSystemHealth();
   ros_bridge_->requestExecutionAllowed();
   ros_bridge_->callOperation("rod_status");
-  ros_bridge_->callOperation("apply_workstation_scene");
 }
 
 void MainWindow::setTreeItemStatus(const QString & node_name, const QString & status){

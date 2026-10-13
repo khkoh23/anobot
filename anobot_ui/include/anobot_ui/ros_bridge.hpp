@@ -71,10 +71,16 @@ Q_SIGNALS:
     bool ready,
     const QString & detail
   );
+  void acquiredWorkstationUpdated(
+    bool acquired,
+    const QString & detail
+  );
 
 private:
   using Trigger = std_srvs::srv::Trigger;
   void createTriggerClients();
+  void requestControllerStatus();
+  void requestAcquiredWorkstationStatus();
   rclcpp::Node::SharedPtr node_;
   rclcpp_action::Client<ExecuteTask>::SharedPtr action_client_;
   GoalHandleExecuteTask::SharedPtr current_goal_handle_;
@@ -87,7 +93,6 @@ private:
   rclcpp::Subscription<anobot_interfaces::msg::BtState>::SharedPtr bt_state_subscription_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr bt_log_subscription_;
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr calibrated_pose_subscription_;
-  void requestControllerStatus();
   rclcpp::Client<controller_manager_msgs::srv::ListControllers>::SharedPtr controller_list_client_;
   rclcpp::Client<moveit_msgs::srv::GetPlanningScene>::SharedPtr moveit_scene_client_;
   std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -97,6 +102,7 @@ private:
   double calibrated_marker_max_age_s_{1.0};
   std::chrono::steady_clock::time_point last_calibrated_pose_arrival_;
   std::atomic<bool> calibrated_pose_received_{false};
+  std::atomic<bool> acquisition_status_request_active_{false};
 };
 
 }  // namespace anobot_ui

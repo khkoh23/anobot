@@ -16,6 +16,7 @@
   <exec_depend>anobot_bt</exec_depend>
   <exec_depend>anobot_manipulation</exec_depend>
   <exec_depend>anobot_moveit_config</exec_depend>
+  <exec_depend>anobot_perception</exec_depend>
   <exec_depend>anobot_scene</exec_depend>
   <exec_depend>anobot_ui</exec_depend>
   <exec_depend>anobot_ur_bridge</exec_depend>

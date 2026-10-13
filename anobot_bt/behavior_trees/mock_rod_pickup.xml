@@ -2,6 +2,7 @@
 <root BTCPP_format="4" main_tree_to_execute="MockRodPickup">
   <BehaviorTree ID="MockRodPickup">
     <Sequence name="MockRodPickupSequence">
+      <VerifyWorkstationAcquired/>
       <ResetRod message="{reset_message}"/>
       <VerifyRodAtWorkstation message="{workstation_status}"/>
       <PlanPregrasp message="{plan_pregrasp_message}"/>

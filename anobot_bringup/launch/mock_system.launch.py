@@ -170,6 +170,18 @@ def generate_launch_description():
         ],
     )
 
+    workstation_acquisition = TimerAction(
+        period=8.0,
+        actions=[
+            IncludeLaunchDescription(
+                package_launch(
+                    "anobot_perception",
+                    "workstation_acquisition.launch.py",
+                )
+            )
+        ],
+    )
+
     grasp_pose = TimerAction(
         period=9.0,
         actions=[
@@ -311,6 +323,7 @@ def generate_launch_description():
             move_group,
             rviz,
             real_perception,
+            workstation_acquisition,
             fake_workstation_marker,
             grasp_pose,
             workstation_scene,

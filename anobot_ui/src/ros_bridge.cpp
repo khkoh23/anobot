@@ -34,6 +34,9 @@ RosBridge::RosBridge(const rclcpp::Node::SharedPtr & node, QObject * parent): QO
 
 void RosBridge::createTriggerClients(){
   service_names_ = {
+    {"acquire_workstation", "/perception/acquire_workstation"},
+    {"clear_workstation", "/perception/clear_workstation"},
+    {"workstation_acquisition_status", "/perception/workstation_status"},
     {"apply_workstation_scene", "/scene/apply_workstation_scene"},
     {"remove_workstation_scene", "/scene/remove_workstation_scene"},
     {"reset_rod", "/scene/reset_rod_on_workstation"},
@@ -50,6 +53,65 @@ void RosBridge::createTriggerClients(){
   for (const auto & item : service_names_) {
     service_clients_[item.first] = node_->create_client<Trigger>(item.second);
   }
+}
+
+void RosBridge::requestAcquiredWorkstationStatus(){
+  const auto iterator = service_clients_.find("workstation_acquisition_status");
+  if (iterator == service_clients_.end() || !iterator->second->service_is_ready()){
+    Q_EMIT acquiredWorkstationUpdated(false, "/perception/workstation_status unavailable");
+    return;
+  }
+  bool expected = false;
+  if (!acquisition_status_request_active_. compare_exchange_strong(expected, true)){
+    return;
+  }
+  auto request = std::make_shared<Trigger::Request>();
+  iterator->second->async_send_request(request, [this](rclcpp::Client<Trigger>::SharedFuture future){
+    bool acquired = false;
+    QString detail = "Workstation state: NOT_ACQUIRED";
+    try {
+      const auto response = future.get();
+      acquired = response->success && response->message.find("Workstation state: ACQUIRED") != std::string::npos;
+      detail =QString::fromStdString(response->message);}
+    catch (const std::exception & error) {
+      acquired = false;
+      detail = QString::fromStdString(error.what());
+    }
+    acquisition_status_request_active_ = false;
+    Q_EMIT acquiredWorkstationUpdated(acquired, detail);
+  });
+}
+
+void RosBridge::requestControllerStatus(){
+  if (controller_list_client_ == nullptr || !controller_list_client_->service_is_ready()){
+    Q_EMIT componentHealthUpdated("controller", false, "/controller_manager/list_controllers unavailable");
+    return;
+  }
+  bool expected = false;
+  if (!controller_request_active_.compare_exchange_strong(expected, true)){
+    return;
+  }
+  auto request = std::make_shared<controller_manager_msgs::srv::ListControllers::Request>();
+  controller_list_client_->async_send_request(request, [this](rclcpp::Client<controller_manager_msgs::srv::ListControllers>::SharedFuture future){
+    bool ready = false;
+    QString detail = "scaled_joint_trajectory_controller " "not active";
+    try {
+      const auto response = future.get();
+      for (const auto & controller : response->controller){
+        if (controller.name == "scaled_joint_trajectory_controller"){
+          ready = controller.state == "active";
+          detail = QString("scaled_joint_trajectory_controller: %1").arg(QString::fromStdString(controller.state));
+          break;
+        }
+      }
+    }
+    catch (const std::exception & error) {
+      ready = false;
+      detail = QString::fromStdString(error.what());
+    }
+    controller_request_active_ = false;
+    Q_EMIT componentHealthUpdated("controller", ready, detail);
+  });
 }
 
 void RosBridge::startTask(const QString & task_name){
@@ -160,6 +222,12 @@ void RosBridge::callOperation(const QString & operation_key){
       Q_EMIT operationFinished(operation_key, response->success, QString::fromStdString(response->message));
       if (operation_key == "rod_status") {
         Q_EMIT rodStatusUpdated(QString::fromStdString(response->message), response->success);
+      }
+      if (operation_key == "acquire_workstation" && response->success){
+        callOperation("apply_workstation_scene");
+      }
+      if (operation_key == "acquire_workstation" || "clear_workstation"){
+        requestAcquiredWorkstationStatus();
       }
       if (response->success && (operation_key == "reset_rod" || operation_key == "attach_rod" || operation_key == "detach_rod")){
         callOperation("rod_status");
@@ -293,6 +361,7 @@ void RosBridge::pollSystemHealth() {
     }
   }
   Q_EMIT componentHealthUpdated("workstation_marker", marker_ready, marker_detail);
+  requestAcquiredWorkstationStatus();
   requestControllerStatus();
 }
 
@@ -303,36 +372,5 @@ void RosBridge::setRealPerceptionEnabled(bool enabled){
     : "Marker readiness mode: mock static transform");
 }
 
-void RosBridge::requestControllerStatus(){
-  if (controller_list_client_ == nullptr || !controller_list_client_->service_is_ready()){
-    Q_EMIT componentHealthUpdated("controller", false, "/controller_manager/list_controllers unavailable");
-    return;
-  }
-  bool expected = false;
-  if (!controller_request_active_.compare_exchange_strong(expected, true)){
-    return;
-  }
-  auto request = std::make_shared<controller_manager_msgs::srv::ListControllers::Request>();
-  controller_list_client_->async_send_request(request, [this](rclcpp::Client<controller_manager_msgs::srv::ListControllers>::SharedFuture future){
-    bool ready = false;
-    QString detail = "scaled_joint_trajectory_controller " "not active";
-    try {
-      const auto response = future.get();
-      for (const auto & controller : response->controller){
-        if (controller.name == "scaled_joint_trajectory_controller"){
-          ready = controller.state == "active";
-          detail = QString("scaled_joint_trajectory_controller: %1").arg(QString::fromStdString(controller.state));
-          break;
-        }
-      }
-    }
-    catch (const std::exception & error) {
-      ready = false;
-      detail = QString::fromStdString(error.what());
-    }
-    controller_request_active_ = false;
-    Q_EMIT componentHealthUpdated("controller", ready, detail);
-  });
-}
 
 }  // namespace anobot_ui
