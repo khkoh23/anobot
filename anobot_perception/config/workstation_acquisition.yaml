@@ -1,0 +1,11 @@
+workstation_acquisition_server:
+  ros__parameters:
+    input_pose_topic: /workstation_marker/pose_base
+    base_frame: ur_base
+    acquired_marker_frame: workstation_marker_acquired
+    sample_count: 15
+    acquisition_timeout_s: 5.0
+    maximum_input_age_s: 0.25
+    maximum_translation_spread_m: 0.005
+    maximum_rotation_spread_deg: 1.5
+    publish_rate_hz: 10.0
