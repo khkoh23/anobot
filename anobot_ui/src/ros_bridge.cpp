@@ -35,6 +35,7 @@ RosBridge::RosBridge(const rclcpp::Node::SharedPtr & node, QObject * parent): QO
 void RosBridge::createTriggerClients(){
   service_names_ = {
     {"apply_workstation_scene", "/scene/apply_workstation_scene"},
+    {"remove_workstation_scene", "/scene/remove_workstation_scene"},
     {"reset_rod", "/scene/reset_rod_on_workstation"},
     {"rod_status", "/scene/rod_status"},
     {"plan_pregrasp", "/manipulation/plan_pregrasp"},

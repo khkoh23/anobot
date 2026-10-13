@@ -31,7 +31,6 @@ setup(
     },
     entry_points={
         'console_scripts': [
-          'workstation_grasp_pose = anobot_scene.workstation_grasp_pose:main',
           'workstation_scene = anobot_scene.workstation_scene:main',
           'rod_lifecycle_server = anobot_scene.rod_lifecycle_server:main',
         ],
