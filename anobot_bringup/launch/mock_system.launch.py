@@ -28,7 +28,6 @@ def generate_launch_description():
         .to_moveit_configs()
     )
     launch_moveit_rviz = LaunchConfiguration("launch_moveit_rviz")
-    launch_mock_cycle_server = LaunchConfiguration("launch_mock_cycle_server")
     launch_ui = LaunchConfiguration("launch_ui")
     use_fake_workstation_marker = LaunchConfiguration("use_fake_workstation_marker")
     launch_real_perception = LaunchConfiguration("launch_real_perception")
@@ -39,11 +38,6 @@ def generate_launch_description():
             "launch_moveit_rviz",
             default_value="true",
             description=("Launch standalone MoveIt RViz."),
-        ),
-        DeclareLaunchArgument(
-            "launch_mock_cycle_server",
-            default_value="false",
-            description=("Launch the legacy mock pickup-cycle orchestration service."),
         ),
         DeclareLaunchArgument(
             "launch_ui",
@@ -182,27 +176,6 @@ def generate_launch_description():
         ],
     )
 
-    grasp_pose = TimerAction(
-        period=9.0,
-        actions=[
-            Node(
-                package="anobot_manipulation",
-                executable="workstation_grasp_pose",
-                name="workstation_grasp_pose",
-                output="screen",
-                parameters=[
-                    PathJoinSubstitution([
-                        FindPackageShare(
-                            "anobot_manipulation"
-                        ),
-                        "config",
-                        "workstation_grasp_pose.yaml",
-                    ])
-                ],
-            )
-        ],
-    )
-
     # RViz starts before this scene node to avoid the
     # late-discovery problem currently observed.
     workstation_scene = TimerAction(
@@ -302,19 +275,6 @@ def generate_launch_description():
         ],
     )
 
-    mock_pick_cycle = TimerAction(
-        period=8.0,
-        actions=[
-            IncludeLaunchDescription(
-                package_launch(
-                    "anobot_manipulation",
-                    "mock_pick_cycle_server.launch.py",
-                ),
-                condition=IfCondition(launch_mock_cycle_server),
-            )
-        ],
-    )
-
     return LaunchDescription(
         declared_arguments
         + [
@@ -325,12 +285,10 @@ def generate_launch_description():
             real_perception,
             workstation_acquisition,
             fake_workstation_marker,
-            grasp_pose,
             workstation_scene,
             rod_lifecycle,
             manipulation,
             task_executor,
             user_interface,
-            mock_pick_cycle,
         ]
     )
