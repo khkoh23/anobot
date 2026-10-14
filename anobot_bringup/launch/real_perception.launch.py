@@ -81,6 +81,8 @@ def generate_launch_description():
             "camera_name": "camera",
             "camera_namespace": "camera",
             "serial_no": serial_no,
+            "base_frame_id": "link",
+            "tf_prefix": "",
             "initial_reset": "false",
             "enable_color": "true",
             "enable_depth": "false",
