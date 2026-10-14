@@ -2,11 +2,17 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from moveit_configs_utils import MoveItConfigsBuilder
 
 
 def generate_launch_description():
+    mock_hardware = LaunchConfiguration("mock_hardware")
+    allow_execution = LaunchConfiguration("allow_execution")
+
     moveit_config = (
         MoveItConfigsBuilder(
             "anobot",
@@ -44,8 +50,8 @@ def generate_launch_description():
                 "end_effector_link": "anobot_grasp_frame",
                 "tf_timeout_s": 5.0,
                 "scene_sync_delay_s": 2.0,
-                "allow_execution": False,
-                "mock_hardware": True,
+                "allow_execution": ParameterValue(allow_execution, value_type=bool,),
+                "mock_hardware": ParameterValue(mock_hardware, value_type=bool,),
                 "maximum_plan_age_s": 30.0,
                 "endpoint_verification_timeout_s": 5.0,
                 "maximum_grasp_position_error_m": 0.003,
@@ -55,5 +61,15 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument(
+            "mock_hardware",
+            default_value="true",
+            description=("Whether manipulation uses mock hardware."),
+        ),
+        DeclareLaunchArgument(
+            "allow_execution",
+            default_value="false",
+            description=("Initial trajectory-execution permission."),
+        ),
         planner,
     ])

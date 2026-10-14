@@ -3,6 +3,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import EnvironmentVariable, LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
@@ -15,6 +16,7 @@ def generate_launch_description():
     marker_size = LaunchConfiguration("marker_size")
     color_profile = LaunchConfiguration("color_profile")
     maximum_time_difference_ms = LaunchConfiguration("maximum_time_difference_ms")
+    launch_tcp_pose_publisher = LaunchConfiguration("launch_tcp_pose_publisher")
     realsense_launch = os.path.join(
         get_package_share_directory("realsense2_camera"),
         "launch",
@@ -69,6 +71,15 @@ def generate_launch_description():
                 "Maximum marker/joint-state time "
                 "difference accepted by the calibrated "
                 "marker publisher."
+            ),
+        ),
+        DeclareLaunchArgument(
+            "launch_tcp_pose_publisher",
+            default_value="true",
+            description=(
+                "Launch the custom TF-based TCP pose publisher. "
+                "Disable when the physical UR driver's "
+                "tcp_pose_broadcaster is active."
             ),
         ),
     ]
@@ -131,6 +142,7 @@ def generate_launch_description():
         executable="tcp_pose_publisher",
         name="tcp_pose_broadcaster",
         output="screen",
+        condition=IfCondition(launch_tcp_pose_publisher),
         parameters=[
             {
                 "base_frame": "ur_base",
