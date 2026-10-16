@@ -122,7 +122,7 @@ def generate_launch_description():
     )
 
     fake_workstation_marker = TimerAction(
-        period=5.0,
+        period=3.0,
         actions=[
             Node(
                 package="tf2_ros",
@@ -142,6 +142,27 @@ def generate_launch_description():
                 ],
                 output="screen",
                 condition=IfCondition(use_fake_workstation_marker),
+            )
+        ],
+    )
+
+    mock_workstation_pose = TimerAction(
+        period=6.0,
+        actions=[
+            Node(
+                package="anobot_perception",
+                executable=("mock_workstation_pose_publisher"),
+                name=("mock_workstation_pose_publisher"),
+                output="screen",
+                condition=IfCondition(use_fake_workstation_marker),
+                parameters=[
+                    {
+                        "base_frame": "ur_base",
+                        "marker_frame": ("workstation_marker_26_calibrated"),
+                        "output_topic": ("/workstation_marker/pose_base"),
+                        "publish_rate_hz": 15.0,
+                    }
+                ],
             )
         ],
     )
@@ -285,6 +306,7 @@ def generate_launch_description():
             real_perception,
             workstation_acquisition,
             fake_workstation_marker,
+            mock_workstation_pose,
             workstation_scene,
             rod_lifecycle,
             manipulation,

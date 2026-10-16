@@ -27,7 +27,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'workstation_acquisition_server = anobot_perception.workstation_acquisition_server:main'
+            'workstation_acquisition_server = anobot_perception.workstation_acquisition_server:main',
+            'mock_workstation_pose_publisher = anobot_perception.mock_workstation_pose_publisher:main'
         ],
     },
 )

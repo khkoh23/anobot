@@ -56,6 +56,8 @@ def generate_launch_description():
                 "endpoint_verification_timeout_s": 5.0,
                 "maximum_grasp_position_error_m": 0.003,
                 "maximum_grasp_orientation_error_deg": 1.0,
+                "ready_state_name": "ready",
+                "camera_view_state_name": "camera_view",
             },
         ],
     )

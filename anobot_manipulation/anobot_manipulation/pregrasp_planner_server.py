@@ -49,6 +49,10 @@ class PregraspPlannerServer(Node):
         self.declare_parameter("maximum_grasp_position_error_m", 0.003,)
         self.declare_parameter("maximum_grasp_orientation_error_deg", 1.0,)
         self.declare_parameter("endpoint_verification_timeout_s", 5.0,)
+        self.declare_parameter("ready_state_name", "ready", )
+        self.declare_parameter("camera_view_state_name", "camera_view",)
+        self.latest_named_trajectories = {"ready": None, "camera_view": None,}
+        self.latest_named_plan_times = {"ready": None, "camera_view": None,}
         self.tf_node = Node("pregrasp_planner_tf_listener", use_global_arguments=False,)
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self.tf_node, spin_thread=True,)
@@ -66,6 +70,12 @@ class PregraspPlannerServer(Node):
         self.plan_retreat_service = self.create_service(Trigger, "/manipulation/plan_retreat_linear", self.plan_retreat_linear_callback,)
         self.execute_retreat_service = self.create_service(Trigger, "/manipulation/execute_retreat_linear", self.execute_retreat_linear_callback,)
         self.clear_retreat_service = self.create_service(Trigger, "/manipulation/clear_retreat_plan", self.clear_retreat_plan_callback,)
+        self.plan_ready_pose_service = self.create_service(Trigger, "/manipulation/plan_ready_pose", self.plan_ready_pose_callback,)
+        self.execute_ready_pose_service = self.create_service(Trigger, "/manipulation/execute_ready_pose", self.execute_ready_pose_callback,)
+        self.clear_ready_pose_plan_service = (self.create_service(Trigger, "/manipulation/clear_ready_pose_plan", self.clear_ready_pose_plan_callback,))
+        self.plan_camera_view_pose_service = (self.create_service(Trigger, "/manipulation/plan_camera_view_pose", self.plan_camera_view_pose_callback,))
+        self.execute_camera_view_pose_service = (self.create_service(Trigger, "/manipulation/execute_camera_view_pose", self.execute_camera_view_pose_callback,))
+        self.clear_camera_view_pose_plan_service = (self.create_service(Trigger, "/manipulation/clear_camera_view_pose_plan", self.clear_camera_view_pose_plan_callback,))
         scene_delay = float(self.get_parameter("scene_sync_delay_s").value)
         self.get_logger().info(f"Waiting {scene_delay:.1f} seconds for " "planning-scene synchronization")
         time.sleep(scene_delay)
@@ -81,7 +91,13 @@ class PregraspPlannerServer(Node):
             "  /manipulation/clear_grasp_plan\n"
             "  /manipulation/plan_retreat_linear\n"
             "  /manipulation/execute_retreat_linear\n"
-            "  /manipulation/clear_retreat_plan"
+            "  /manipulation/clear_retreat_plan\n"
+            "  /manipulation/plan_ready_pose\n"
+            "  /manipulation/execute_ready_pose\n"
+            "  /manipulation/clear_ready_pose_plan\n"
+            "  /manipulation/plan_camera_view_pose\n"
+            "  /manipulation/execute_camera_view_pose\n"
+            "  /manipulation/clear_camera_view_pose_plan"
         )
         self.get_logger().warning("PLAN-ONLY MODE: trajectory execution is disabled")
 
@@ -111,6 +127,179 @@ class PregraspPlannerServer(Node):
         message.model_id = "anobot"
         message.trajectory.append(trajectory.get_robot_trajectory_msg())
         self.display_publisher.publish(message)
+
+    def plan_named_state(self, plan_key, state_name, response,):
+        if not self.planning_lock.acquire(blocking=False):
+            response.success = False
+            response.message = ("Planner is already processing another request.")
+            return response
+        try:
+            self.get_logger().info(
+                f"Planning group {PLANNING_GROUP} "
+                f"to SRDF state '{state_name}'"
+            )
+            self.arm.set_start_state_to_current_state()
+            self.arm.set_goal_state(configuration_name=state_name)
+            plan_result = self.arm.plan()
+            if not plan_result:
+                self.latest_named_trajectories[plan_key] = None
+                self.latest_named_plan_times[plan_key] = None
+                response.success = False
+                response.message = (
+                    "MoveIt failed to plan to SRDF "
+                    f"state '{state_name}'."
+                )
+                self.get_logger().error(response.message)
+                return response
+            trajectory_message = (plan_result.trajectory.get_robot_trajectory_msg())
+            point_count = len(trajectory_message.joint_trajectory.points)
+            self.latest_named_trajectories[plan_key] = plan_result.trajectory
+            self.latest_named_plan_times[plan_key] = time.monotonic()
+            self.publish_display_trajectory(plan_result.trajectory)
+            response.success = True
+            response.message = (
+                f"Plan to SRDF state '{state_name}' "
+                f"successful: {point_count} trajectory "
+                "points. Stored and displayed; "
+                "not executed."
+            )
+            self.get_logger().info(response.message)
+            return response
+        except Exception as error:
+            self.latest_named_trajectories[plan_key] = None
+            self.latest_named_plan_times[plan_key] = None
+            response.success = False
+            response.message = (
+                f"Named-state planning failed for "
+                f"'{state_name}': {error}"
+            )
+            self.get_logger().error(response.message)
+            return response
+        finally:
+            self.planning_lock.release()
+
+    def execute_named_state(self, plan_key, state_name, response,):
+        allow_execution = bool(self.get_parameter("allow_execution").value)
+        mock_hardware = bool(self.get_parameter("mock_hardware").value)
+        if not allow_execution:
+            response.success = False
+            response.message = ("Execution is disabled.")
+            return response
+        if not mock_hardware:
+            response.success = False
+            response.message = ("Physical named-state execution is currently blocked in software.")
+            return response
+        trajectory = (self.latest_named_trajectories[plan_key])
+        plan_time = (self.latest_named_plan_times[plan_key])
+        if trajectory is None or plan_time is None:
+            response.success = False
+            response.message = (
+                f"No stored plan for SRDF state "
+                f"'{state_name}'."
+            )
+            return response
+        maximum_age_s = float(self.get_parameter("maximum_plan_age_s").value)
+        plan_age_s = (time.monotonic() - plan_time)
+        if plan_age_s > maximum_age_s:
+            self.latest_named_trajectories[plan_key] = None
+            self.latest_named_plan_times[plan_key] = None
+            response.success = False
+            response.message = (
+                f"Stored '{state_name}' plan is stale "
+                f"({plan_age_s:.1f} seconds). "
+                "Generate a new plan."
+            )
+            return response
+        if not self.planning_lock.acquire(blocking=False):
+            response.success = False
+            response.message = ("Planner is busy with another request.")
+            return response
+        try:
+            self.get_logger().warning(
+                f"Executing SRDF state '{state_name}' "
+                "trajectory on MOCK HARDWARE"
+            )
+            result = self.robot.execute(trajectory, controllers=[],)
+            # Never reuse an executed trajectory.
+            self.latest_named_trajectories[plan_key] = None
+            self.latest_named_plan_times[plan_key] = None
+            # Named-state movement changes the robot's
+            # start state, so all Cartesian plans become
+            # invalid.
+            self.latest_trajectory = None
+            self.latest_plan_time = None
+            self.latest_grasp_trajectory = None
+            self.latest_grasp_plan_time = None
+            self.latest_retreat_trajectory = None
+            self.latest_retreat_plan_time = None
+            if not result:
+                response.success = False
+                response.message = (
+                    f"Mock execution to SRDF state "
+                    f"'{state_name}' failed."
+                )
+                self.get_logger().error(response.message)
+                return response
+            response.success = True
+            response.message = (
+                f"Mock trajectory to SRDF state "
+                f"'{state_name}' executed successfully."
+            )
+            self.get_logger().info(response.message)
+            return response
+        except Exception as error:
+            self.latest_named_trajectories[plan_key] = None
+            self.latest_named_plan_times[plan_key] = None
+            response.success = False
+            response.message = (
+                f"Named-state execution failed for "
+                f"'{state_name}': {error}"
+            )
+            self.get_logger().error(response.message)
+            return response
+        finally:
+            self.planning_lock.release()
+
+    def clear_named_state_plan(self, plan_key, state_name, response,):
+        self.latest_named_trajectories[plan_key] = None
+        self.latest_named_plan_times[plan_key] = None
+        response.success = True
+        response.message = (
+            f"Stored plan for SRDF state "
+            f"'{state_name}' cleared."
+        )
+        self.get_logger().info(response.message)
+        return response
+
+    def plan_ready_pose_callback(self, request, response,):
+        del request
+        state_name = str(self.get_parameter("ready_state_name").value)
+        return self.plan_named_state("ready", state_name, response,)
+
+    def execute_ready_pose_callback(self, request, response,):
+        del request
+        state_name = str(self.get_parameter("ready_state_name").value)
+        return self.execute_named_state("ready", state_name, response,)
+
+    def clear_ready_pose_plan_callback(self, request, response,):
+        del request
+        state_name = str(self.get_parameter("ready_state_name").value)
+        return self.clear_named_state_plan("ready", state_name, response,)
+
+    def plan_camera_view_pose_callback(self, request, response,):
+        del request
+        state_name = str(self.get_parameter("camera_view_state_name").value)
+        return self.plan_named_state("camera_view", state_name, response,)
+
+    def execute_camera_view_pose_callback(self, request, response,):
+        del request
+        state_name = str(self.get_parameter("camera_view_state_name").value)
+        return self.execute_named_state("camera_view", state_name, response,)
+
+    def clear_camera_view_pose_plan_callback(self, request, response,):
+        del request
+        state_name = str(self.get_parameter("camera_view_state_name").value)
+        return self.clear_named_state_plan("camera_view", state_name, response,)
 
     def plan_pregrasp_callback(self, request, response):
         del request

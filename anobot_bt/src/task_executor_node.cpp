@@ -50,18 +50,25 @@ TaskExecutorNode::TaskExecutorNode() : Node("anobot_task_executor"){
 
 void TaskExecutorNode::registerBtNodes(){
   const std::unordered_map<std::string, ServiceNodeDefinition> service_map = {
+    {"AcquireWorkstation", {"/perception/acquire_workstation",""}},
+    {"ApplyWorkstationScene", {"/scene/apply_workstation_scene", ""}},
     {"VerifyWorkstationAcquired", {"/perception/workstation_status", "Workstation state: ACQUIRED"}},
     {"VerifyWorkstationSceneApplied", {"/scene/workstation_scene_status", "Workstation scene state: APPLIED"}},
     {"ResetRod", {"/scene/reset_rod_on_workstation", ""}},
     {"VerifyRodAtWorkstation", {"/scene/rod_status", "WORLD_OBJECT"}},
+    {"VerifyRodAttached", {"/scene/rod_status", "ATTACHED_TO_GRIPPER"}},
     {"PlanPregrasp", {"/manipulation/plan_pregrasp", ""}},
     {"ExecutePregrasp", {"/manipulation/execute_pregrasp", ""}},
     {"PlanLinearGrasp", {"/manipulation/plan_grasp_linear", ""}},
     {"ExecuteLinearGrasp", {"/manipulation/execute_grasp_linear", ""}},
     {"AttachRod", {"/scene/attach_rod", ""}},
-    {"VerifyRodAttached", {"/scene/rod_status", "ATTACHED_TO_GRIPPER"}},
+    {"DetachRod", {"/scene/detach_rod", ""}},
     {"PlanLinearRetreat", {"/manipulation/plan_retreat_linear", ""}},
     {"ExecuteLinearRetreat", {"/manipulation/execute_retreat_linear", ""}},
+    {"PlanReadyPose", {"/manipulation/plan_ready_pose", ""}},
+    {"ExecuteReadyPose", {"/manipulation/execute_ready_pose", ""}},
+    {"PlanCameraViewPose", {"/manipulation/plan_camera_view_pose", ""}},
+    {"ExecuteCameraViewPose", {"/manipulation/execute_camera_view_pose", ""}},
     {"VerifyRodAfterRetreat", {"/scene/rod_status", "ATTACHED_TO_GRIPPER"}}
   };
   for (const auto & item : service_map) {
@@ -74,7 +81,8 @@ void TaskExecutorNode::registerBtNodes(){
 }
 
 rclcpp_action::GoalResponse TaskExecutorNode::handleGoal(const rclcpp_action::GoalUUID &, std::shared_ptr<const ExecuteTask::Goal> goal){
-  if (goal->task_name != "mock_rod_pickup"){
+  const bool task_supported = goal->task_name == "mock_rod_pickup" || goal->task_name == "pick_rod" || goal->task_name == "place_rod";
+  if (!task_supported) {
     RCLCPP_WARN(get_logger(), "Rejecting unsupported task: %s", goal->task_name.c_str());
     return rclcpp_action::GoalResponse::REJECT;
   }
@@ -150,7 +158,7 @@ void TaskExecutorNode::executeGoal(const std::shared_ptr<GoalHandleExecuteTask> 
       setLifecycleState(TaskLifecycleState::SUCCESS, task_name, "", "Task succeeded");
       publishLog("Task succeeded: " + task_name);
       result->success = true;
-      result->message = "Mock rod pickup succeeded";
+      result->message = "Task succeeded: " + task_name;
       goal_handle->succeed(result);
       return;
     }
@@ -200,11 +208,13 @@ bool TaskExecutorNode::loadTreeForTask(const std::string & task_name){
 }
 
 std::string TaskExecutorNode::taskXmlPath(const std::string & task_name) const{
-  const auto share_directory = ament_index_cpp::get_package_share_directory("anobot_bt");
-  if (task_name == "mock_rod_pickup") {
-    return share_directory + "/behavior_trees/" "mock_rod_pickup.xml";
-  }
-  return "";
+  std::string xml_file;
+  if (task_name == "mock_rod_pickup") xml_file = "mock_rod_pickup.xml";
+  else if (task_name == "pick_rod") xml_file = "pick_rod.xml";
+  else if (task_name == "place_rod") xml_file = "place_rod.xml";
+  else return "";
+  const std::string package_share = ament_index_cpp::get_package_share_directory("anobot_bt");
+  return package_share + "/behavior_trees/" + xml_file;
 }
 
 void TaskExecutorNode::publishTreeStatus(){

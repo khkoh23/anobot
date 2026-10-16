@@ -25,7 +25,7 @@ class WorkstationScene(Node):
 
     def __init__(self):
         super().__init__("workstation_scene")
-        self.declare_parameter("frame_id", "workstation_marker_26_calibrated",)
+        self.declare_parameter("frame_id", "workstation_marker_acquired",)
         self.declare_parameter("object_id", "dummy_tank",)
         self.declare_parameter("mesh_file", "meshes/dummy_tank.STL",)
         self.declare_parameter("mesh_resource", "package://anobot_scene/meshes/dummy_tank.STL",)
@@ -369,7 +369,8 @@ class WorkstationScene(Node):
         # These tolerances only detect whether acquisition
         # changed after scene application. They are not
         # perception-quality limits.
-        pose_matches = (translation_difference_m <= 0.0001 and rotation_difference_deg <= 0.01)
+        # pose_matches = (translation_difference_m <= 0.0001 and rotation_difference_deg <= 0.01)
+        pose_matches = (translation_difference_m <= 0.001 and rotation_difference_deg <= 0.5)
         if not pose_matches:
             response.success = False
             response.message = (

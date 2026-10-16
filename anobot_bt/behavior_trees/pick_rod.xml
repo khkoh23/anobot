@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root BTCPP_format="4" main_tree_to_execute="PickRod">
+  <BehaviorTree ID="PickRod">
+    <Sequence name="PickRodSequence">
+      <AcquireWorkstation message="{acquire_message}"/>
+      <ApplyWorkstationScene message="{scene_message}"/>
+      <VerifyWorkstationAcquired message="{acquired_status}"/>
+      <VerifyWorkstationSceneApplied message="{scene_status}"/>
+      <ResetRod message="{reset_message}"/>
+      <VerifyRodAtWorkstation message="{workstation_status}"/>
+      <PlanPregrasp message="{plan_pregrasp_message}"/>
+      <ExecutePregrasp message="{execute_pregrasp_message}"/>
+      <PlanLinearGrasp message="{plan_grasp_message}"/>
+      <ExecuteLinearGrasp message="{execute_grasp_message}"/>
+      <AttachRod message="{attach_message}"/>
+      <VerifyRodAttached message="{attached_status}"/>
+      <PlanLinearRetreat message="{plan_retreat_message}"/>
+      <ExecuteLinearRetreat message="{execute_retreat_message}"/>
+      <PlanReadyPose message="{plan_ready_message}"/>
+      <ExecuteReadyPose message="{execute_ready_message}"/>
+      <VerifyRodAttached message="{final_attached_status}"/>
+    </Sequence>
+  </BehaviorTree>
+</root>

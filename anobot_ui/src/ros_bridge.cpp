@@ -49,7 +49,13 @@ void RosBridge::createTriggerClients(){
     {"attach_rod", "/scene/attach_rod" },
     {"plan_retreat", "/manipulation/plan_retreat_linear"},
     {"execute_retreat", "/manipulation/execute_retreat_linear"},
-    {"detach_rod", "/scene/detach_rod"}
+    {"detach_rod", "/scene/detach_rod"}, 
+    {"plan_ready_pose", "/manipulation/plan_ready_pose"},
+    {"execute_ready_pose", "/manipulation/execute_ready_pose"},
+    {"clear_ready_pose_plan", "/manipulation/clear_ready_pose_plan"},
+    {"plan_camera_view_pose", "/manipulation/plan_camera_view_pose"},
+    {"execute_camera_view_pose", "/manipulation/execute_camera_view_pose"},
+    {"clear_camera_view_pose_plan", "/manipulation/clear_camera_view_pose_plan"}
   };
   for (const auto & item : service_names_) {
     service_clients_[item.first] = node_->create_client<Trigger>(item.second);

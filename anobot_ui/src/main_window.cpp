@@ -378,8 +378,10 @@ void MainWindow::connectSignals() {
 
 void MainWindow::populateOperations(){
   operation_selector_->clear();
-  for (auto iterator = task_definitions_.constBegin(); iterator != task_definitions_.constEnd(); ++iterator){
-    const auto & definition = iterator.value();
+  const QStringList preferred_tasks = {"pick_rod", "place_rod", "mock_rod_pickup"};
+  for (const QString & task_name : preferred_tasks){
+    if (!task_definitions_.contains(task_name)) continue;
+    const auto & definition = task_definitions_[task_name];
     operation_selector_->addItem(definition.display_name, "task:" + definition.task_name);
   }
   operation_selector_->insertSeparator(operation_selector_->count());
@@ -399,13 +401,48 @@ void MainWindow::populateOperations(){
   operation_selector_->addItem("Plan linear retreat", "service:plan_retreat");
   operation_selector_->addItem("Execute linear retreat", "service:execute_retreat");
   operation_selector_->addItem("Detach rod", "service:detach_rod");
+  operation_selector_->insertSeparator(operation_selector_->count());
+  operation_selector_->addItem("Plan Ready Pose", "service:plan_ready_pose");
+  operation_selector_->addItem("Execute Ready Pose", "service:execute_ready_pose");
+  operation_selector_->addItem("Plan Camera View Pose", "service:plan_camera_view_pose");
+  operation_selector_->addItem("Execute Camera View Pose", "service:execute_camera_view_pose");
 }
 
 void MainWindow::populateTaskDefinitions(){
   task_definitions_.clear();
   const QString package_share = QString::fromStdString(ament_index_cpp::get_package_share_directory("anobot_bt"));
+  TaskDefinition pick_rod;
+  pick_rod.display_name = "Pick Rod and Move to Ready";
+  pick_rod.task_name = "pick_rod";
+  pick_rod.xml_path = package_share + "/behavior_trees/pick_rod.xml";
+  pick_rod.required_components = QStringList{
+    "controller",
+    "moveit",
+    "workstation_marker",
+    // "workstation_scene",
+    "manipulation",
+    "rod_lifecycle",
+    "bt_executor"
+  };
+  if (real_perception_enabled_) pick_rod.required_components.append("camera");
+  task_definitions_.insert(pick_rod.task_name, pick_rod);
+  TaskDefinition place_rod;
+  place_rod.display_name = "Place Rod and Move to Camera View";
+  place_rod.task_name = "place_rod";
+  place_rod.xml_path = package_share + "/behavior_trees/place_rod.xml";
+  place_rod.required_components = QStringList{
+    "controller",
+    "moveit",
+    "workstation_marker",
+    // "workstation_scene",
+    "manipulation",
+    "rod_lifecycle",
+    "bt_executor"
+  };
+  if (real_perception_enabled_) place_rod.required_components.append("camera");
+  task_definitions_.insert(place_rod.task_name, place_rod);
   TaskDefinition mock_pickup;
-  mock_pickup.display_name = "Run complete mock rod pickup";
+  mock_pickup.display_name = "Legacy Complete Mock Rod Pickup";
   mock_pickup.task_name = "mock_rod_pickup";
   mock_pickup.xml_path = package_share + "/behavior_trees/mock_rod_pickup.xml";
   mock_pickup.required_components = QStringList{
@@ -418,9 +455,7 @@ void MainWindow::populateTaskDefinitions(){
     "rod_lifecycle",
     "bt_executor"
   };
-  if (real_perception_enabled_) {
-    mock_pickup.required_components.append("camera");
-  }
+  if (real_perception_enabled_) mock_pickup.required_components.append("camera");
   task_definitions_.insert(mock_pickup.task_name, mock_pickup);
 }
 
