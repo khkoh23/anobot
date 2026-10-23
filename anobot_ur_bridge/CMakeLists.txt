@@ -21,8 +21,7 @@ ament_target_dependencies(trajectory_until_node PUBLIC control_msgs rclcpp rclcp
 #   DESTINATION include/${PROJECT_NAME}
 # )
 
-install(TARGETS 
-  trajectory_until_node
+install(TARGETS trajectory_until_node
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY
@@ -31,6 +30,11 @@ install(DIRECTORY
   rviz
   urdf
   DESTINATION share/${PROJECT_NAME})
+
+install(PROGRAMS scripts/end_effector_server.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME end_effector_server
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

@@ -3,27 +3,39 @@
 
   <xacro:include filename="$(find anobot_description)/urdf/anobot_macro.xacro"/>
   <xacro:include filename="$(find ur_robot_driver)/urdf/ur.ros2_control.xacro"/>
-  
+    
   <xacro:arg name="ur_type" default="ur10e"/>
   <xacro:arg name="tf_prefix" default="ur_"/>
-  <xacro:arg name="joint_limits_parameters_file"
-    default="$(find ur_description)/config/$(arg ur_type)/joint_limits.yaml"/>
-  <xacro:arg name="kinematics_parameters_file"
-    default="$(find ur_description)/config/$(arg ur_type)/default_kinematics.yaml"/>
-  <xacro:arg name="physical_parameters_file"
-    default="$(find ur_description)/config/$(arg ur_type)/physical_parameters.yaml"/>
-  <xacro:arg name="visual_parameters_file"
-    default="$(find ur_description)/config/$(arg ur_type)/visual_parameters.yaml"/>
+  <xacro:arg name="joint_limits_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/joint_limits.yaml"/>
+  <xacro:arg name="kinematics_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/default_kinematics.yaml"/>
+  <xacro:arg name="physical_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/physical_parameters.yaml"/>
+  <xacro:arg name="visual_parameters_file" default="$(find ur_description)/config/$(arg ur_type)/visual_parameters.yaml"/>
   <xacro:arg name="robot_ip" default="192.168.56.101"/>
-  <xacro:arg name="headless_mode" default="false"/>
+  <xacro:arg name="ur_script_filename" default="$(find ur_client_library)/resources/external_control.urscript"/>
+  <xacro:arg name="ur_input_recipe_filename" default="$(find ur_robot_driver)/resources/rtde_input_recipe.txt"/>
+  <xacro:arg name="ur_output_recipe_filename" default="$(find ur_robot_driver)/resources/rtde_output_recipe.txt"/>
+  <xacro:arg name="transmission_hw_interface" default=""/>
   <xacro:arg name="use_mock_hardware" default="false"/>
   <xacro:arg name="mock_sensor_commands" default="false"/>
-  <xacro:arg name="ur_script_filename"
-    default="$(find ur_client_library)/resources/external_control.urscript"/>
-  <xacro:arg name="ur_output_recipe_filename"
-    default="$(find ur_robot_driver)/resources/rtde_output_recipe.txt"/>
-  <xacro:arg name="ur_input_recipe_filename"
-    default="$(find ur_robot_driver)/resources/rtde_input_recipe.txt"/>
+  <xacro:arg name="headless_mode" default="false"/>
+  <xacro:arg name="initial_positions_file" default="$(find ur_description)/config/initial_positions.yaml"/>
+  <xacro:property name="initial_positions_file" default="$(arg initial_positions_file)"/>
+  <xacro:arg name="use_tool_communication" default="false" />
+  <xacro:arg name="tool_voltage" default="0" />
+  <xacro:arg name="tool_parity" default="0" />
+  <xacro:arg name="tool_baud_rate" default="115200" />
+  <xacro:arg name="tool_stop_bits" default="1" />
+  <xacro:arg name="tool_rx_idle_chars" default="1.5" />
+  <xacro:arg name="tool_tx_idle_chars" default="3.5" />
+  <xacro:arg name="tool_device_name" default="/tmp/ttyUR" />
+  <xacro:arg name="tool_tcp_port" default="54321" />
+  <xacro:arg name="reverse_port" default="50001"/>
+  <xacro:arg name="script_sender_port" default="50002"/>
+  <xacro:arg name="reverse_ip" default="0.0.0.0"/>
+  <xacro:arg name="script_command_port" default="50004"/>
+  <xacro:arg name="trajectory_port" default="50003"/>
+  <xacro:arg name="blocking_read" default="false" />
+  <xacro:arg name="verify_robot_model" default="false" />
 
   <xacro:anobot
     ur_type="$(arg ur_type)"
@@ -39,11 +51,29 @@
     kinematics_parameters_file="$(arg kinematics_parameters_file)"
     robot_ip="$(arg robot_ip)"
     script_filename="$(arg ur_script_filename)"
-    output_recipe_filename="$(arg ur_output_recipe_filename)"
     input_recipe_filename="$(arg ur_input_recipe_filename)"
+    output_recipe_filename="$(arg ur_output_recipe_filename)"
     ur_type="$(arg ur_type)"
+    transmission_hw_interface="$(arg transmission_hw_interface)"
     use_mock_hardware="$(arg use_mock_hardware)"
     mock_sensor_commands="$(arg mock_sensor_commands)"
-    headless_mode="$(arg headless_mode)"/>
+    headless_mode="$(arg headless_mode)"
+    initial_positions="${xacro.load_yaml(initial_positions_file)}"
+    use_tool_communication="$(arg use_tool_communication)"
+    tool_voltage="$(arg tool_voltage)"
+    tool_parity="$(arg tool_parity)"
+    tool_baud_rate="$(arg tool_baud_rate)"
+    tool_stop_bits="$(arg tool_stop_bits)"
+    tool_rx_idle_chars="$(arg tool_rx_idle_chars)"
+    tool_tx_idle_chars="$(arg tool_tx_idle_chars)"
+    tool_device_name="$(arg tool_device_name)"
+    tool_tcp_port="$(arg tool_tcp_port)"
+    reverse_port="$(arg reverse_port)"
+    script_sender_port="$(arg script_sender_port)"
+    reverse_ip="$(arg reverse_ip)"
+    script_command_port="$(arg script_command_port)"
+    trajectory_port="$(arg trajectory_port)"
+    non_blocking_read="${not xacro.arg('blocking_read')}"
+    verify_robot_model="$(arg verify_robot_model)"/>
 
 </robot>

@@ -9,40 +9,38 @@ from launch.substitutions import (
     NotSubstitution,
     PathJoinSubstitution,
 )
-
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterFile, ParameterValue
 from launch_ros.substitutions import FindPackageShare
 
 
 def launch_setup(context, *args, **kwargs):
-    # UR-specific arguments
     ur_type = LaunchConfiguration("ur_type")
     robot_ip = LaunchConfiguration("robot_ip")
-
-    # Description / hardware arguments
     tf_prefix = LaunchConfiguration("tf_prefix")
     use_mock_hardware = LaunchConfiguration("use_mock_hardware")
     mock_sensor_commands = LaunchConfiguration("mock_sensor_commands")
     headless_mode = LaunchConfiguration("headless_mode")
     kinematics_parameters_file = LaunchConfiguration("kinematics_parameters_file")
-
-    # Controller arguments
     controllers_file = LaunchConfiguration("controllers_file")
     update_rate_config_file = LaunchConfiguration("update_rate_config_file")
     controller_spawner_timeout = LaunchConfiguration("controller_spawner_timeout")
     initial_joint_controller = LaunchConfiguration("initial_joint_controller")
     activate_joint_controller = LaunchConfiguration("activate_joint_controller")
-
-    # Visualization
     launch_rviz = LaunchConfiguration("launch_rviz")
     rviz_config_file = LaunchConfiguration("rviz_config_file")
-
-    # UR driver helper arguments
     launch_dashboard_client = LaunchConfiguration("launch_dashboard_client")
     use_tool_communication = LaunchConfiguration("use_tool_communication")
     tool_device_name = LaunchConfiguration("tool_device_name")
     tool_tcp_port = LaunchConfiguration("tool_tcp_port")
+    tool_voltage = LaunchConfiguration("tool_voltage")
+    tool_parity = LaunchConfiguration("tool_parity")
+    tool_baud_rate = LaunchConfiguration("tool_baud_rate")
+    tool_stop_bits = LaunchConfiguration("tool_stop_bits")
+    tool_rx_idle_chars = LaunchConfiguration("tool_rx_idle_chars")
+    tool_tx_idle_chars = LaunchConfiguration("tool_tx_idle_chars")
+    launch_end_effector_server = (LaunchConfiguration("launch_end_effector_server"))
+    end_effector_config_file = (LaunchConfiguration("end_effector_config_file"))
 
     # -------------------------------------------------------------------------
     # Robot description
@@ -80,6 +78,34 @@ def launch_setup(context, *args, **kwargs):
             " ",
             "tf_prefix:=",
             tf_prefix,
+            " ",
+            "use_tool_communication:=", 
+            use_tool_communication,
+            " ",
+            "tool_voltage:=", 
+            tool_voltage,
+            " ",
+            "tool_parity:=", 
+            tool_parity,
+            " ",
+            "tool_baud_rate:=", 
+            tool_baud_rate,
+            " ",
+            "tool_stop_bits:=", 
+            tool_stop_bits,
+            " ",
+            "tool_rx_idle_chars:=", 
+            tool_rx_idle_chars,
+            " ",
+            "tool_tx_idle_chars:=", 
+            tool_tx_idle_chars,
+            " ",
+            "tool_device_name:=", 
+            tool_device_name,
+            " ",
+            "tool_tcp_port:=", 
+            tool_tcp_port,
+            " ",
         ]
     )
 
@@ -234,6 +260,19 @@ def launch_setup(context, *args, **kwargs):
     )
 
     # -------------------------------------------------------------------------
+    # End effector
+    # -------------------------------------------------------------------------
+    end_effector_server_node = Node(
+        package="anobot_ur_bridge",
+        executable="end_effector_server",
+        name="end_effector_server",
+        output="screen",
+        condition=IfCondition(launch_end_effector_server),
+        parameters=[end_effector_config_file,
+        ],
+    )
+
+    # -------------------------------------------------------------------------
     # Controller spawners
     # -------------------------------------------------------------------------
     def controller_spawner(controllers, active=True):
@@ -314,6 +353,7 @@ def launch_setup(context, *args, **kwargs):
         robot_state_publisher_node,
         rviz_node,
         trajectory_until_node,
+        end_effector_server_node,
     ] + controller_spawners
 
     return nodes_to_start
@@ -675,6 +715,37 @@ def generate_launch_description():
                 ]
             ),
             description="UR calibration YAML passed to the robot description xacro.",
+        )
+    )
+
+    # -------------------------------------------------------------------------
+    # End effector
+    # -------------------------------------------------------------------------
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "launch_end_effector_server",
+            default_value="false",
+            description=(
+                "Launch the generic RS485 "
+                "end-effector service server."
+            ),
+        )
+    )
+
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "end_effector_config_file",
+            default_value=PathJoinSubstitution([
+                FindPackageShare(
+                    "anobot_ur_bridge"
+                ),
+                "config",
+                "end_effector.yaml",
+            ]),
+            description=(
+                "Configuration for the generic "
+                "end-effector server."
+            ),
         )
     )
 

@@ -1,0 +1,27 @@
+/end_effector_server:
+  ros__parameters:
+    device: /tmp/ttyUR
+    baud_rate: 9600
+    read_timeout_s: 2.00
+    write_timeout_s: 0.50
+    response_delay_s: 0.02
+    inter_byte_quiet_s: 0.10
+    read_size: 128
+    flush_input_before_command: true
+    dry_run: false
+    # Accepted formats:
+    #   "01 06 00 01 00 01"
+    #   "010600010001"
+    #   "0x01 0x06 0x00 0x01 0x00 0x01"
+    status_command_hex: "30" #ASCII '0' Query Sensor
+    tighten_command_hex: "31" #ASCII '1' Tighten
+    loosen_command_hex: "32" #ASCII '2' Loosen
+    open_command_hex: "33" #ASCII '3' Open
+    # Expected response prefixes.
+    tighten_expected_text: "Tight"
+    loosen_expected_text: "Loose"
+    open_expected_text: "Open"
+    # status_expected_hex: ""
+    # Enable only if the protocol uses standard
+    # Modbus RTU CRC16 and command strings omit CRC.
+    append_crc16_modbus: false

@@ -2,7 +2,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, TimerAction
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import EnvironmentVariable, LaunchConfiguration, PathJoinSubstitution
@@ -84,11 +84,10 @@ def generate_launch_description():
         ),
     ]
 
-    realsense = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            realsense_launch
-        ),
-        launch_arguments={
+    realsense = GroupAction(
+        scoped=True,
+        forwarding=False,
+        launch_configurations={
             "camera_name": "camera",
             "camera_namespace": "camera",
             "serial_no": serial_no,
@@ -108,7 +107,12 @@ def generate_launch_description():
                 color_profile
             ),
             "output": "screen",
-        }.items(),
+        },
+        actions=[IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                realsense_launch
+            )
+        )]
     )
     aruco = TimerAction(
         period=3.0,

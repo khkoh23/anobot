@@ -406,6 +406,11 @@ void MainWindow::populateOperations(){
   operation_selector_->addItem("Execute Ready Pose", "service:execute_ready_pose");
   operation_selector_->addItem("Plan Camera View Pose", "service:plan_camera_view_pose");
   operation_selector_->addItem("Execute Camera View Pose", "service:execute_camera_view_pose");
+  operation_selector_->insertSeparator(operation_selector_->count());
+  operation_selector_->addItem("Open Gripper", "service:open_gripper");
+  operation_selector_->addItem("Tighten Gripper", "service:tighten_gripper");
+  operation_selector_->addItem("Loosen Gripper", "service:loosen_gripper");
+  operation_selector_->addItem("Show Gripper Status", "service:gripper_status");
 }
 
 void MainWindow::populateTaskDefinitions(){
