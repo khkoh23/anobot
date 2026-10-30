@@ -4,8 +4,8 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded: ~
-      Splitter Ratio: 0.7093495726585388
-    Tree Height: 140
+      Splitter Ratio: 0.5
+    Tree Height: 226
   - Class: rviz_common/Help
     Name: Help
   - Class: rviz_common/Views
@@ -83,24 +83,29 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
+          body_cam_bottom_screw_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          body_cam_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          body_cam_mount:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          body_cam_mounting:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
           body_link:
             Alpha: 1
             Show Axes: false
             Show Trail: false
             Value: true
-          camera_bottom_screw_frame:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          camera_link:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          camera_mount:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
           end_effector_mount:
             Alpha: 1
             Show Axes: false
@@ -110,6 +115,19 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
+          hand_cam_bottom_screw_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          hand_cam_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          hand_cam_mount:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
           robot_mount:
             Alpha: 1
             Show Axes: false
@@ -118,7 +136,6 @@ Visualization Manager:
             Alpha: 1
             Show Axes: false
             Show Trail: false
-            Value: true
           ur_base:
             Alpha: 1
             Show Axes: false
@@ -193,15 +210,15 @@ Visualization Manager:
         TextHeight: 0.07999999821186066
       Planning Request:
         Colliding Link Color: 255; 0; 0
-        Goal State Alpha: 0.25
+        Goal State Alpha: 0.20000000298023224
         Goal State Color: 250; 128; 0
-        Interactive Marker Size: 0.05000000074505806
+        Interactive Marker Size: 0.20000000298023224
         Joint Violation Color: 255; 0; 255
         Planning Group: ur_arm
-        Query Goal State: false
+        Query Goal State: true
         Query Start State: false
         Show Workspace: false
-        Start State Alpha: 0.25
+        Start State Alpha: 1
         Start State Color: 0; 255; 0
       Planning Scene Topic: monitored_planning_scene
       Robot Description: robot_description
@@ -238,24 +255,29 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
+          body_cam_bottom_screw_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          body_cam_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          body_cam_mount:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          body_cam_mounting:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
           body_link:
             Alpha: 1
             Show Axes: false
             Show Trail: false
             Value: true
-          camera_bottom_screw_frame:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          camera_link:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          camera_mount:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
           end_effector_mount:
             Alpha: 1
             Show Axes: false
@@ -265,6 +287,19 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
+          hand_cam_bottom_screw_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          hand_cam_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          hand_cam_mount:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
           robot_mount:
             Alpha: 1
             Show Axes: false
@@ -273,7 +308,6 @@ Visualization Manager:
             Alpha: 1
             Show Axes: false
             Show Trail: false
-            Value: true
           ur_base:
             Alpha: 1
             Show Axes: false
@@ -334,123 +368,6 @@ Visualization Manager:
         Show Robot Visual: true
       Value: true
       Velocity_Scaling_Factor: 0.1
-    - Class: rviz_default_plugins/TF
-      Enabled: true
-      Filter (blacklist): ""
-      Filter (whitelist): ""
-      Frame Timeout: 15
-      Frames:
-        All Enabled: false
-        anobot_grasp_frame:
-          Value: false
-        anobot_tool_link:
-          Value: false
-        base_footprint:
-          Value: false
-        base_link:
-          Value: false
-        body_link:
-          Value: false
-        camera_bottom_screw_frame:
-          Value: false
-        camera_color_frame:
-          Value: false
-        camera_color_optical_frame:
-          Value: false
-        camera_link:
-          Value: false
-        camera_mount:
-          Value: false
-        end_effector_mount:
-          Value: false
-        estop_link:
-          Value: false
-        robot_mount:
-          Value: false
-        tool_mount:
-          Value: false
-        ur_base:
-          Value: false
-        ur_base_link:
-          Value: false
-        ur_base_link_inertia:
-          Value: false
-        ur_flange:
-          Value: false
-        ur_forearm_link:
-          Value: false
-        ur_ft_frame:
-          Value: false
-        ur_shoulder_link:
-          Value: false
-        ur_tool0:
-          Value: false
-        ur_upper_arm_link:
-          Value: false
-        ur_wrist_1_link:
-          Value: false
-        ur_wrist_2_link:
-          Value: false
-        ur_wrist_3_link:
-          Value: false
-        workstation_grasp_acquired:
-          Value: true
-        workstation_marker:
-          Value: false
-        workstation_marker_26_calibrated:
-          Value: true
-        workstation_marker_acquired:
-          Value: true
-        workstation_pregrasp_acquired:
-          Value: true
-        world:
-          Value: false
-      Marker Scale: 0.20000000298023224
-      Name: TF
-      Show Arrows: true
-      Show Axes: true
-      Show Names: true
-      Tree:
-        world:
-          base_footprint:
-            base_link:
-              body_link:
-                estop_link:
-                  {}
-                robot_mount:
-                  ur_base_link:
-                    ur_base:
-                      workstation_marker_26_calibrated:
-                        {}
-                      workstation_marker_acquired:
-                        workstation_grasp_acquired:
-                          workstation_pregrasp_acquired:
-                            {}
-                    ur_base_link_inertia:
-                      ur_shoulder_link:
-                        ur_upper_arm_link:
-                          ur_forearm_link:
-                            ur_wrist_1_link:
-                              ur_wrist_2_link:
-                                ur_wrist_3_link:
-                                  ur_flange:
-                                    ur_tool0:
-                                      tool_mount:
-                                        camera_mount:
-                                          camera_bottom_screw_frame:
-                                            camera_link:
-                                              camera_color_frame:
-                                                camera_color_optical_frame:
-                                                  workstation_marker:
-                                                    {}
-                                        end_effector_mount:
-                                          anobot_tool_link:
-                                            anobot_grasp_frame:
-                                              {}
-                                  ur_ft_frame:
-                                    {}
-      Update Interval: 0
-      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -469,41 +386,41 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 3.6446242332458496
+      Distance: 4.1937713623046875
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.04749732092022896
-        Y: -0.49575909972190857
-        Z: 1.1636735200881958
+        X: -0.5008887648582458
+        Y: 0.14603371918201447
+        Z: 0.8394546508789062
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.39479678869247437
+      Pitch: 0.19499926269054413
       Target Frame: world
       Value: Orbit (rviz_default_plugins)
-      Yaw: 2.990163803100586
+      Yaw: 5.9751877784729
     Saved: ~
 Window Geometry:
   Displays:
-    collapsed: true
-  Height: 511
+    collapsed: false
+  Height: 1011
   Help:
     collapsed: false
-  Hide Left Dock: true
+  Hide Left Dock: false
   Hide Right Dock: false
   MotionPlanning:
-    collapsed: true
+    collapsed: false
   MotionPlanning - Trajectory Slider:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000300000000000001ee000001c8fc0200000006fb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000004400fffffffb000000100044006900730070006c0061007900730000000018000000cc000000cc00fffffffb0000000a0049006d00610067006500000001200000010d0000000000000000fb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e006700000000ea000000f60000019600fffffffb0000000800480065006c0070000000029a0000006e0000006f00fffffffb0000000a0056006900650077007300000002ad000000a9000000a900ffffff000000010000014000000395fc0200000001fb0000000c00430061006d006500720061010000003f000003950000000000000000000000020000039f00000107fc0100000001fb0000000c00430061006d00650072006100000000000000039f00000000000000000000044c000001c800000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730000000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000002ad00000395fc0200000005fb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000004400fffffffb000000100044006900730070006c006100790073010000003f00000122000000cc00fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e00670100000167000001b20000019600fffffffb0000000800480065006c0070000000029a0000006e0000006f00fffffffb0000000a00560069006500770073010000031f000000b5000000a900ffffff0000048b0000039500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
-  Width: 1100
-  X: 0
-  Y: 0
+  Width: 1854
+  X: 66
+  Y: 32

@@ -37,34 +37,40 @@
         <joint name="ur_wrist_3_joint" value="0"/>
     </group_state>
     <group_state name="camera_view" group="ur_arm">
-        <joint name="ur_elbow_joint" value="-2.294105052947998"/>
-        <joint name="ur_shoulder_lift_joint" value="-1.6446238956847132"/>
-        <joint name="ur_shoulder_pan_joint" value="-1.4250834623919886"/>
-        <joint name="ur_wrist_1_joint" value="-0.2678007644465943"/>
-        <joint name="ur_wrist_2_joint" value="1.517951250076294"/>
-        <joint name="ur_wrist_3_joint" value="0.1242697685956955"/>
+        <joint name="ur_elbow_joint" value="-2.29411"/>
+        <joint name="ur_shoulder_lift_joint" value="-1.64462"/>
+        <joint name="ur_shoulder_pan_joint" value="-1.42508"/>
+        <joint name="ur_wrist_1_joint" value="-0.267801"/>
+        <joint name="ur_wrist_2_joint" value="1.51795"/>
+        <joint name="ur_wrist_3_joint" value="0.12427"/>
     </group_state>
     <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
     <virtual_joint name="virtual_joint" type="planar" parent_frame="world" child_link="base_footprint"/>
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
-    <disable_collisions link1="anobot_tool_link" link2="camera_link" reason="Never"/>
-    <disable_collisions link1="anobot_tool_link" link2="tool_mount" reason="Adjacent"/>
+    <disable_collisions link1="anobot_tool_link" link2="hand_cam_link" reason="Adjacent"/>
     <disable_collisions link1="anobot_tool_link" link2="ur_wrist_1_link" reason="Never"/>
     <disable_collisions link1="anobot_tool_link" link2="ur_wrist_2_link" reason="Never"/>
-    <disable_collisions link1="anobot_tool_link" link2="ur_wrist_3_link" reason="Never"/>
+    <disable_collisions link1="anobot_tool_link" link2="ur_wrist_3_link" reason="Adjacent"/>
+    <disable_collisions link1="base_link" link2="body_cam_link" reason="Never"/>
+    <disable_collisions link1="base_link" link2="body_cam_mounting" reason="Never"/>
     <disable_collisions link1="base_link" link2="body_link" reason="Adjacent"/>
     <disable_collisions link1="base_link" link2="ur_base_link_inertia" reason="Never"/>
     <disable_collisions link1="base_link" link2="ur_shoulder_link" reason="Never"/>
     <disable_collisions link1="base_link" link2="ur_upper_arm_link" reason="Never"/>
+    <disable_collisions link1="body_cam_link" link2="body_cam_mounting" reason="Adjacent"/>
+    <disable_collisions link1="body_cam_link" link2="body_link" reason="Never"/>
+    <disable_collisions link1="body_cam_link" link2="ur_base_link_inertia" reason="Never"/>
+    <disable_collisions link1="body_cam_link" link2="ur_shoulder_link" reason="Never"/>
+    <disable_collisions link1="body_cam_link" link2="ur_upper_arm_link" reason="Default"/>
+    <disable_collisions link1="body_cam_mounting" link2="body_link" reason="Adjacent"/>
+    <disable_collisions link1="body_cam_mounting" link2="ur_base_link_inertia" reason="Adjacent"/>
+    <disable_collisions link1="body_cam_mounting" link2="ur_shoulder_link" reason="Never"/>
+    <disable_collisions link1="body_cam_mounting" link2="ur_upper_arm_link" reason="Default"/>
     <disable_collisions link1="body_link" link2="ur_base_link_inertia" reason="Adjacent"/>
     <disable_collisions link1="body_link" link2="ur_shoulder_link" reason="Never"/>
-    <disable_collisions link1="camera_link" link2="tool_mount" reason="Adjacent"/>
-    <disable_collisions link1="camera_link" link2="ur_wrist_1_link" reason="Never"/>
-    <disable_collisions link1="camera_link" link2="ur_wrist_2_link" reason="Never"/>
-    <disable_collisions link1="camera_link" link2="ur_wrist_3_link" reason="Never"/>
-    <disable_collisions link1="tool_mount" link2="ur_wrist_1_link" reason="Never"/>
-    <disable_collisions link1="tool_mount" link2="ur_wrist_2_link" reason="Never"/>
-    <disable_collisions link1="tool_mount" link2="ur_wrist_3_link" reason="Adjacent"/>
+    <disable_collisions link1="hand_cam_link" link2="ur_wrist_1_link" reason="Never"/>
+    <disable_collisions link1="hand_cam_link" link2="ur_wrist_2_link" reason="Never"/>
+    <disable_collisions link1="hand_cam_link" link2="ur_wrist_3_link" reason="Adjacent"/>
     <disable_collisions link1="ur_base_link_inertia" link2="ur_shoulder_link" reason="Adjacent"/>
     <disable_collisions link1="ur_base_link_inertia" link2="ur_upper_arm_link" reason="Never"/>
     <disable_collisions link1="ur_base_link_inertia" link2="ur_wrist_1_link" reason="Never"/>

@@ -1,7 +1,9 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
 
-  <xacro:macro name="anobot_agv">
+  <xacro:macro name="anobot_agv" params="
+    body_cam_mount_link:=body_cam_mount
+  ">
 
     <xacro:property name="ground_clearance" value="0.130"/> 
     <xacro:property name="agv_length" value="0.780"/> 
@@ -10,6 +12,7 @@
     <xacro:property name="body_length" value="0.780"/> 
     <xacro:property name="body_width" value="0.560"/> 
     <xacro:property name="body_height" value="0.880"/>
+    <xacro:property name="body_cam_offset" value="0.195"/>
 
     <link name="base_footprint"/>
 
@@ -64,6 +67,24 @@
 
     <link name="robot_mount"/>
 
+    <link name="body_cam_mounting">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://anobot_description/meshes/body_cam_mount.STL"/>
+        </geometry>
+        <material name="dark_grey"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://anobot_description/meshes/body_cam_mount.STL"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <!-- Mechanical reference for the D455 mounting interface. -->
+    <link name="${body_cam_mount_link}"/>
 
 
     <joint name="base_footprint_to_base_link" type="fixed">
@@ -92,9 +113,20 @@
       <origin xyz="0 0 ${body_height/2.0}" rpy="0 0 ${-pi}"/>
     </joint>
 
+    <joint name="robot_mount_to_body_cam_mount" type="fixed">
+      <parent link="robot_mount"/>
+      <child link="body_cam_mounting"/>
+      <origin xyz="0 ${body_cam_offset} 0" rpy="0 0 ${pi/2}"/>
+    </joint>
 
+    <joint name="${body_cam_mount_link}_joint" type="fixed">
+      <parent link="body_cam_mounting"/>
+      <child link="${body_cam_mount_link}"/>
+      <origin
+        xyz="0.03021 0 0.0976" rpy="0 0 0"/>
+    </joint>
 
-    <gazebo reference="base_link">
+    <!-- <gazebo reference="base_link">
       <material>Gazebo/White</material>
       <mu1>0.01</mu1>
       <mu2>0.01</mu2>
@@ -112,7 +144,7 @@
         <publish_odom>true</publish_odom>
         <publish_odom_tf>true</publish_odom_tf>
       </plugin>
-    </gazebo>
+    </gazebo> -->
 
   </xacro:macro>
 
