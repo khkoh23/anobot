@@ -97,7 +97,20 @@ def generate_launch_description():
             "use_tool_communication": "true",
             "tool_voltage": "24",
             "tool_baud_rate": "9600",
+            "tool_parity": "0",
+            "tool_stop_bits": "1",
+            "tool_rx_idle_chars": "1.5",
+            "tool_tx_idle_chars": "3.5",
+            "tool_device_name": "/tmp/ttyUR",
+            "tool_tcp_port": "54321",
             "launch_end_effector_server": "true",
+            "end_effector_config_file": (
+                PathJoinSubstitution([
+                    FindPackageShare("anobot_ur_bridge"),
+                    "config",
+                    "end_effector.yaml",
+                ])
+            ),
         }.items(),
     )
 
@@ -155,8 +168,9 @@ def generate_launch_description():
                     "real_perception.launch.py",
                 ),
                 launch_arguments={
-                    "serial_no": (realsense_serial_no),
-                    "launch_tcp_pose_publisher": ("false"),
+                    "serial_no": realsense_serial_no,
+                    "launch_tcp_pose_publisher": "false",
+                    "use_fixed_camera_calibration": "true",
                 }.items(),
             )
         ],

@@ -5,10 +5,10 @@
     object_id: dummy_tank
     mesh_file: meshes/dummy_tank.STL
     mesh_resource: package://anobot_scene/meshes/dummy_tank.STL
-    x: 0.060
-    y: 0.125
-    z: -0.005
-    roll_deg: -90.0
+    x: -0.113
+    y: 0.044
+    z: -0.033
+    roll_deg: 0.0
     pitch_deg: -90.0
     yaw_deg: 0.0
     scale_x: 1.0

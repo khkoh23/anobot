@@ -1,0 +1,10 @@
+/fixed_camera_marker_pose:
+  ros__parameters:
+    calibration_path: ""
+    base_frame: ur_base
+    camera_frame: body_cam_color_optical_frame
+    raw_marker_frame: workstation_marker
+    calibrated_marker_frame: workstation_marker_26_calibrated
+    output_topic: /workstation_marker/pose_base
+    lookup_rate_hz: 30.0
+    tf_timeout_s: 0.05

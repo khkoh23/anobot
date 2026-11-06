@@ -3,10 +3,11 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, TimerAction
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import EnvironmentVariable, LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
@@ -17,6 +18,7 @@ def generate_launch_description():
     color_profile = LaunchConfiguration("color_profile")
     maximum_time_difference_ms = LaunchConfiguration("maximum_time_difference_ms")
     launch_tcp_pose_publisher = LaunchConfiguration("launch_tcp_pose_publisher")
+    use_fixed_camera_calibration = (LaunchConfiguration("use_fixed_camera_calibration"))
     realsense_launch = os.path.join(
         get_package_share_directory("realsense2_camera"),
         "launch",
@@ -42,7 +44,8 @@ def generate_launch_description():
                 "handeye_factory_run01.yaml",
             ]),
             description=(
-                "Eye-in-hand calibration YAML."
+                "Legacy D435i eye-in-hand calibration YAML."
+                "Used only when use_fixed_camera_calibration is false."
             ),
         ),
         DeclareLaunchArgument(
@@ -59,7 +62,9 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "color_profile",
-            default_value="640x480x15",
+            default_value="1280x720x15",
+            # default_value="848x480x15",
+            # default_value="640x480x15",
             description=(
                 "RealSense color stream profile."
             ),
@@ -82,27 +87,21 @@ def generate_launch_description():
                 "tcp_pose_broadcaster is active."
             ),
         ),
+        DeclareLaunchArgument(
+            "use_fixed_camera_calibration",
+            default_value="false",
+            description=(
+                "Use the body-mounted D455 eye-to-hand "
+                "calibration instead of the legacy "
+                "eye-in-hand TCP-synchronized pipeline."
+            ),
+        ),
     ]
 
     realsense = GroupAction(
         scoped=True,
         forwarding=False,
         launch_configurations={
-            # "camera_name": "camera",
-            # "camera_namespace": "camera",
-            # "serial_no": serial_no,
-            # "base_frame_id": "link",
-            # "tf_prefix": "",
-            # "initial_reset": "false",
-            # "enable_color": "true",
-            # "enable_depth": "false",
-            # "enable_infra": "false",
-            # "enable_infra1": "false",
-            # "enable_infra2": "false",
-            # "enable_gyro": "false",
-            # "enable_accel": "false",
-            # "enable_motion": "false",
-            # "publish_tf": "true",
             "camera_name": "body_cam",
             "camera_namespace": "camera",
             "serial_no": serial_no,
@@ -110,13 +109,15 @@ def generate_launch_description():
             "tf_prefix": "",
             "initial_reset": "false",
             "enable_color": "true",
+            "enable_depth": "false",
             "enable_infra": "false",
+            "enable_infra1": "false",
+            "enable_infra2": "false",
             "enable_gyro": "false",
             "enable_accel": "false",
-            "publish_tf": "true",            
-            "rgb_camera.color_profile": (
-                color_profile
-            ),
+            "enable_motion": "false",
+            "publish_tf": "true",
+            "rgb_camera.color_profile": (color_profile),
             "output": "screen",
         },
         actions=[IncludeLaunchDescription(
@@ -138,15 +139,15 @@ def generate_launch_description():
                         "image_is_rectified": True,
                         "marker_id": marker_id,
                         "marker_size": marker_size,
-                        "reference_frame": ("camera_color_optical_frame"),
-                        "camera_frame": ("camera_color_optical_frame"),
+                        "reference_frame": ("body_cam_color_optical_frame"),
+                        "camera_frame": ("body_cam_color_optical_frame"),
                         "marker_frame": ("workstation_marker"),
                         "corner_refinement": "SUBPIX",
                     }
                 ],
                 remappings=[
-                    ("/image", "/camera/camera/color/image_raw",),
-                    ("/camera_info", "/camera/camera/color/camera_info",),
+                    ("/image", "/camera/body_cam/color/image_raw",),
+                    ("/camera_info", "/camera/body_cam/color/camera_info",),
                 ],
             )
         ],
@@ -179,11 +180,41 @@ def generate_launch_description():
                 executable="publish_calibrated_marker_pose",
                 name="publish_calibrated_marker_pose",
                 output="screen",
+                condition=UnlessCondition(use_fixed_camera_calibration),
                 parameters=[
                     {
                         "calibration_path": (calibration_path),
                         "maximum_time_difference_ms": (maximum_time_difference_ms),
                     }
+                ],
+            )
+        ],
+    )
+
+    fixed_camera_marker_pose = TimerAction(
+        period=4.0,
+        actions=[
+            Node(
+                package="anobot_perception",
+                executable="fixed_camera_marker_pose",
+                name="fixed_camera_marker_pose",
+                output="screen",
+                condition=IfCondition(use_fixed_camera_calibration),
+                parameters=[
+                    PathJoinSubstitution([
+                        FindPackageShare("anobot_perception"),
+                        "config",
+                        "fixed_camera_marker_pose.yaml",
+                    ]),
+                    {
+                        "calibration_path":
+                            PathJoinSubstitution([
+                                FindPackageShare("anobot_perception"),
+                                "config",
+                                "calibration",
+                                "ur10e_d455_eye_to_hand.yaml",
+                            ]),
+                    },
                 ],
             )
         ],
@@ -196,5 +227,6 @@ def generate_launch_description():
             aruco,
             tcp_pose_publisher,
             calibrated_marker,
+            fixed_camera_marker_pose,
         ]
     )

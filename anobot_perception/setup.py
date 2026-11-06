@@ -13,6 +13,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         (os.path.join("share", package_name, "config",), glob("config/*.yaml"),),
         (os.path.join("share", package_name, "launch",), glob("launch/*.launch.py"),),
+        (os.path.join("share", package_name, "config", "calibration",), glob("config/calibration/*.yaml"),),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -28,7 +29,8 @@ setup(
     entry_points={
         'console_scripts': [
             'workstation_acquisition_server = anobot_perception.workstation_acquisition_server:main',
-            'mock_workstation_pose_publisher = anobot_perception.mock_workstation_pose_publisher:main'
+            'mock_workstation_pose_publisher = anobot_perception.mock_workstation_pose_publisher:main',
+            'fixed_camera_marker_pose = anobot_perception.fixed_camera_marker_pose:main'
         ],
     },
 )

@@ -10,11 +10,11 @@ workstation_acquisition_server:
     maximum_input_age_s: 0.25
     maximum_translation_spread_m: 0.005
     maximum_rotation_spread_deg: 1.5
-    grasp_x_m: 0.050
-    grasp_y_m: 0.125
-    grasp_z_m: 0.232
+    grasp_x_m: -0.113
+    grasp_y_m: 0.035
+    grasp_z_m: 0.199
     grasp_roll_deg: 90.0
     grasp_pitch_deg: 0.0
-    grasp_yaw_deg: -90.0
+    grasp_yaw_deg: 0.0
     pregrasp_distance_m: 0.10
     publish_rate_hz: 10.0
