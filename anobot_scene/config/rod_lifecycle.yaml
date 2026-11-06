@@ -5,12 +5,18 @@
     planning_frame: ur_base
     rod_workstation_frame: workstation_marker_acquired
     rod_mesh_file: meshes/anodizing_rod.STL
-    rod_x: -0.113
-    rod_y: 0.044
-    rod_z: -0.033
-    rod_roll_deg: 0.0
-    rod_pitch_deg: -90.0
-    rod_yaw_deg: 0.0
+    # rod_x: -0.113
+    # rod_y: 0.044
+    # rod_z: -0.033
+    # rod_roll_deg: 0.0
+    # rod_pitch_deg: -90.0
+    # rod_yaw_deg: 0.0
+    rod_x: -0.111722
+    rod_y: 0.042900
+    rod_z: -0.031060
+    rod_roll_deg: -84.7222
+    rod_pitch_deg: -85.9960
+    rod_yaw_deg: 82.8731
     rod_scale_x: 1.0
     rod_scale_y: 1.0
     rod_scale_z: 1.0
