@@ -61,6 +61,10 @@ void TaskExecutorNode::registerBtNodes(){
     {"ExecutePregrasp", {"/manipulation/execute_pregrasp", ""}},
     {"PlanLinearGrasp", {"/manipulation/plan_grasp_linear", ""}},
     {"ExecuteLinearGrasp", {"/manipulation/execute_grasp_linear", ""}},
+    {"OpenGripper", {"/tool/open_gripper", ""}},
+    {"LoosenGripper", {"/tool/loosen_gripper", ""}},
+    {"TightenGripper", {"/tool/tighten_gripper", ""}},
+    {"QueryGripperStatus", {"/tool/gripper_status", ""}},
     {"AttachRod", {"/scene/attach_rod", ""}},
     {"DetachRod", {"/scene/detach_rod", ""}},
     {"PlanLinearRetreat", {"/manipulation/plan_retreat_linear", ""}},
@@ -69,7 +73,11 @@ void TaskExecutorNode::registerBtNodes(){
     {"ExecuteReadyPose", {"/manipulation/execute_ready_pose", ""}},
     {"PlanCameraViewPose", {"/manipulation/plan_camera_view_pose", ""}},
     {"ExecuteCameraViewPose", {"/manipulation/execute_camera_view_pose", ""}},
-    {"VerifyRodAfterRetreat", {"/scene/rod_status", "ATTACHED_TO_GRIPPER"}}
+    {"VerifyRodAfterRetreat", {"/scene/rod_status", "ATTACHED_TO_GRIPPER"}},
+    {"PlanHoverPose", {"/manipulation/plan_hover_pose", ""}},
+    {"ExecuteHoverPose", {"/manipulation/execute_hover_pose", ""}},
+    {"PlanLinearPregrasp", {"/manipulation/plan_pregrasp_linear", ""}},
+    {"ExecuteLinearPregrasp", {"/manipulation/execute_pregrasp_linear", ""}},
   };
   for (const auto & item : service_map) {
     const std::string node_name = item.first;

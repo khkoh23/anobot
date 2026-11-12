@@ -10,14 +10,17 @@
       <VerifyRodAtWorkstation message="{workstation_status}"/>
       <PlanPregrasp message="{plan_pregrasp_message}"/>
       <ExecutePregrasp message="{execute_pregrasp_message}"/>
+      <OpenGripper message="{open_gripper_message}"/>
       <PlanLinearGrasp message="{plan_grasp_message}"/>
       <ExecuteLinearGrasp message="{execute_grasp_message}"/>
+      <LoosenGripper message="{loosen_gripper_message}"/>
       <AttachRod message="{attach_message}"/>
       <VerifyRodAttached message="{attached_status}"/>
       <PlanLinearRetreat message="{plan_retreat_message}"/>
       <ExecuteLinearRetreat message="{execute_retreat_message}"/>
-      <PlanReadyPose message="{plan_ready_message}"/>
-      <ExecuteReadyPose message="{execute_ready_message}"/>
+      <TightenGripper message="{tighten_gripper_message}"/>
+      <PlanHoverPose message="{plan_hover_message}"/>
+      <ExecuteHoverPose message="{execute_hover_message}"/>
       <VerifyRodAttached message="{final_attached_status}"/>
     </Sequence>
   </BehaviorTree>

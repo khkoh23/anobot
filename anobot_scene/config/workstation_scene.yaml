@@ -11,12 +11,12 @@
     # roll_deg: 0.0
     # pitch_deg: -90.0
     # yaw_deg: 0.0
-    x: -0.111722
-    y: 0.042900
-    z: -0.031060
-    roll_deg: -84.7222
-    pitch_deg: -85.9960
-    yaw_deg: 82.8731
+    x: -0.121964
+    y: 0.043955
+    z: -0.034015
+    roll_deg: -64.673981
+    pitch_deg: -86.093545
+    yaw_deg: 62.513474
     scale_x: 1.0
     scale_y: 1.0
     scale_z: 1.0

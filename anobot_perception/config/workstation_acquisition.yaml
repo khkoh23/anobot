@@ -16,11 +16,11 @@ workstation_acquisition_server:
     # grasp_roll_deg: 90.0
     # grasp_pitch_deg: 0.0
     # grasp_yaw_deg: 0.0
-    grasp_x_m: -0.110
-    grasp_y_m: 0.050
-    grasp_z_m: 0.201
-    grasp_roll_deg: 86.015
-    grasp_pitch_deg: 0.369
-    grasp_yaw_deg: -1.864
+    grasp_x_m: -0.115
+    grasp_y_m: 0.049
+    grasp_z_m: 0.198
+    grasp_roll_deg: 86.468
+    grasp_pitch_deg: 1.670
+    grasp_yaw_deg: -2.212
     pregrasp_distance_m: 0.10
     publish_rate_hz: 10.0

@@ -59,7 +59,13 @@ void RosBridge::createTriggerClients(){
     {"open_gripper", "/tool/open_gripper"},
     {"tighten_gripper", "/tool/tighten_gripper"},
     {"loosen_gripper", "/tool/loosen_gripper"},
-    {"gripper_status", "/tool/gripper_status"}
+    {"gripper_status", "/tool/gripper_status"},
+    {"plan_hover_pose", "/manipulation/plan_hover_pose"},
+    {"execute_hover_pose", "/manipulation/execute_hover_pose"},
+    {"clear_hover_pose_plan", "/manipulation/clear_hover_pose_plan"},
+    {"plan_linear_pregrasp", "/manipulation/plan_pregrasp_linear"},
+    {"execute_linear_pregrasp", "/manipulation/execute_pregrasp_linear"},
+    {"clear_linear_pregrasp", "/manipulation/clear_pregrasp_linear_plan"},
   };
   for (const auto & item : service_names_) {
     service_clients_[item.first] = node_->create_client<Trigger>(item.second);

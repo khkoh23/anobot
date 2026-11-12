@@ -51,8 +51,17 @@ class PregraspPlannerServer(Node):
         self.declare_parameter("endpoint_verification_timeout_s", 5.0,)
         self.declare_parameter("ready_state_name", "ready", )
         self.declare_parameter("camera_view_state_name", "camera_view",)
+        self.declare_parameter("hover_distance_m", 0.9,)
+        self.declare_parameter("hover_orientation_x", 0.005,)
+        self.declare_parameter("hover_orientation_y", 1.000,)
+        self.declare_parameter("hover_orientation_z", -0.001,)
+        self.declare_parameter("hover_orientation_w", 0.006,)
         self.latest_named_trajectories = {"ready": None, "camera_view": None,}
         self.latest_named_plan_times = {"ready": None, "camera_view": None,}
+        self.latest_hover_trajectory = None
+        self.latest_hover_plan_time = None
+        self.latest_linear_pregrasp_trajectory = None
+        self.latest_linear_pregrasp_plan_time = None
         self.tf_node = Node("pregrasp_planner_tf_listener", use_global_arguments=False,)
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self.tf_node, spin_thread=True,)
@@ -76,6 +85,12 @@ class PregraspPlannerServer(Node):
         self.plan_camera_view_pose_service = (self.create_service(Trigger, "/manipulation/plan_camera_view_pose", self.plan_camera_view_pose_callback,))
         self.execute_camera_view_pose_service = (self.create_service(Trigger, "/manipulation/execute_camera_view_pose", self.execute_camera_view_pose_callback,))
         self.clear_camera_view_pose_plan_service = (self.create_service(Trigger, "/manipulation/clear_camera_view_pose_plan", self.clear_camera_view_pose_plan_callback,))
+        self.plan_hover_pose_service = (self.create_service(Trigger, "/manipulation/plan_hover_pose", self.plan_hover_pose_callback,))
+        self.execute_hover_pose_service = (self.create_service(Trigger, "/manipulation/execute_hover_pose", self.execute_hover_pose_callback,))
+        self.clear_hover_pose_plan_service = (self.create_service( Trigger, "/manipulation/clear_hover_pose_plan", self.clear_hover_pose_plan_callback,))
+        self.plan_linear_pregrasp_service = (self.create_service(Trigger, "/manipulation/plan_pregrasp_linear", self.plan_linear_pregrasp_callback,))
+        self.execute_linear_pregrasp_service = (self.create_service(Trigger, "/manipulation/execute_pregrasp_linear", self.execute_linear_pregrasp_callback,))
+        self.clear_linear_pregrasp_service = (self.create_service(Trigger, "/manipulation/clear_pregrasp_linear_plan", self.clear_linear_pregrasp_callback,))
         scene_delay = float(self.get_parameter("scene_sync_delay_s").value)
         self.get_logger().info(f"Waiting {scene_delay:.1f} seconds for " "planning-scene synchronization")
         time.sleep(scene_delay)
@@ -97,9 +112,90 @@ class PregraspPlannerServer(Node):
             "  /manipulation/clear_ready_pose_plan\n"
             "  /manipulation/plan_camera_view_pose\n"
             "  /manipulation/execute_camera_view_pose\n"
-            "  /manipulation/clear_camera_view_pose_plan"
+            "  /manipulation/clear_camera_view_pose_plan\n"
+            "  /manipulation/plan_pregrasp_linear\n"
+            "  /manipulation/execute_pregrasp_linear\n"
+            "  /manipulation/clear_pregrasp_linear_plan\n"
+            "  /manipulation/plan_hover_pose\n"
+            "  /manipulation/execute_hover_pose\n"
+            "  /manipulation/clear_hover_pose_plan"
         )
         self.get_logger().warning("PLAN-ONLY MODE: trajectory execution is disabled")
+
+    @staticmethod
+    def quaternion_to_rotation_matrix(x, y, z, w,):
+        norm = math.sqrt(x * x + y * y + z * z + w * w)
+        if norm < 1.0e-12:
+            raise RuntimeError("Invalid zero quaternion for " "hover orientation.")
+        x /= norm
+        y /= norm
+        z /= norm
+        w /= norm
+        return (
+            (
+                1.0 - 2.0 * (y*y + z*z),
+                2.0 * (x*y - z*w),
+                2.0 * (x*z + y*w),
+            ),
+            (
+                2.0 * (x*y + z*w),
+                1.0 - 2.0 * (x*x + z*z),
+                2.0 * (y*z - x*w),
+            ),
+            (
+                2.0 * (x*z - y*w),
+                2.0 * (y*z + x*w),
+                1.0 - 2.0 * (x*x + y*y),
+            ),
+        )
+
+    def normalized_hover_orientation(self):
+        x = float(self.get_parameter("hover_orientation_x").value)
+        y = float(self.get_parameter("hover_orientation_y").value)
+        z = float(self.get_parameter("hover_orientation_z").value)
+        w = float(self.get_parameter("hover_orientation_w").value)
+        norm = math.sqrt(x * x + y * y + z * z + w * w)
+        if norm < 1.0e-12:
+            raise RuntimeError("Configured hover orientation is " "an invalid zero quaternion.")
+        return (x / norm, y / norm, z / norm, w / norm,)
+
+    def build_hover_target_pose(self):
+        grasp_frame = self.get_parameter("grasp_target_frame").value
+        grasp_pose = self.lookup_target_pose(grasp_frame)
+        distance_m = float(self.get_parameter("hover_distance_m").value)
+        if distance_m <= 0.0:
+            raise RuntimeError("hover_distance_m must be positive.")
+        grasp_orientation = (grasp_pose.pose.orientation)
+        rotation = (
+            self.quaternion_to_rotation_matrix(
+                grasp_orientation.x,
+                grasp_orientation.y,
+                grasp_orientation.z,
+                grasp_orientation.w,
+            )
+        )
+        # The third rotation-matrix column is the
+        # grasp frame's local +Z axis expressed in
+        # the planning frame.
+        local_z_x = rotation[0][2]
+        local_z_y = rotation[1][2]
+        local_z_z = rotation[2][2]
+        hover_pose = PoseStamped()
+        hover_pose.header.stamp = (grasp_pose.header.stamp)
+        hover_pose.header.frame_id = (grasp_pose.header.frame_id)
+        # Move from grasp along local -Z.
+        hover_pose.pose.position.x = (grasp_pose.pose.position.x - distance_m * local_z_x)
+        hover_pose.pose.position.y = (grasp_pose.pose.position.y - distance_m * local_z_y)
+        hover_pose.pose.position.z = (grasp_pose.pose.position.z - distance_m * local_z_z)
+        (orientation_x, orientation_y, orientation_z, orientation_w,) = self.normalized_hover_orientation()
+        # Orientation is independent from the acquired
+        # marker orientation and matches the SRDF ready
+        # end-effector orientation.
+        hover_pose.pose.orientation.x = (orientation_x)
+        hover_pose.pose.orientation.y = (orientation_y)
+        hover_pose.pose.orientation.z = (orientation_z)
+        hover_pose.pose.orientation.w = (orientation_w)
+        return grasp_pose, hover_pose
 
     def lookup_target_pose(self, target_frame):
         planning_frame = self.get_parameter("planning_frame").value
@@ -232,6 +328,10 @@ class PregraspPlannerServer(Node):
             self.latest_grasp_plan_time = None
             self.latest_retreat_trajectory = None
             self.latest_retreat_plan_time = None
+            self.latest_hover_trajectory = None
+            self.latest_hover_plan_time = None
+            self.latest_linear_pregrasp_trajectory = None
+            self.latest_linear_pregrasp_plan_time = None
             if not result:
                 response.success = False
                 response.message = (
@@ -350,6 +450,151 @@ class PregraspPlannerServer(Node):
         finally:
             self.planning_lock.release()
 
+    def plan_linear_pregrasp_callback(self, request, response,):
+        del request
+        # A new planning attempt invalidates any previously
+        # stored linear pre-grasp trajectory.
+        self.latest_linear_pregrasp_trajectory = None
+        self.latest_linear_pregrasp_plan_time = None
+        if not self.planning_lock.acquire(blocking=False):
+            response.success = False
+            response.message = ("Planner is already processing ""another request.")
+            return response
+        try:
+            target_frame = str(self.get_parameter("target_frame").value)
+            target_pose = self.lookup_target_pose(target_frame)
+            end_effector_link = str(self.get_parameter("end_effector_link").value)
+            self.get_logger().info(
+                "Planning Pilz LIN motion to "
+                f"{target_frame}: "
+                f"xyz=("
+                f"{target_pose.pose.position.x:.4f}, "
+                f"{target_pose.pose.position.y:.4f}, "
+                f"{target_pose.pose.position.z:.4f})"
+            )
+            # Allow the previous Hover execution state to
+            # propagate through joint states and TF.
+            self.get_logger().info("Waiting for current-state synchronization " "before linear pre-grasp planning.")
+            time.sleep(1.0)
+            self.arm.set_start_state_to_current_state()
+            self.arm.set_goal_state(pose_stamped_msg=target_pose, pose_link=end_effector_link,)
+            plan_result = self.arm.plan(single_plan_parameters=(self.pilz_lin_parameters))
+            if not plan_result:
+                response.success = False
+                response.message = ("Pilz LIN failed to plan the " "motion to pre-grasp.")
+                self.get_logger().error(response.message)
+                return response
+            trajectory_message = (plan_result.trajectory.get_robot_trajectory_msg())
+            point_count = len(trajectory_message.joint_trajectory.points)
+            if point_count == 0:
+                response.success = False
+                response.message = ("Pilz LIN returned an empty " "pre-grasp trajectory.")
+                self.get_logger().error(response.message)
+                return response
+            last_point = (trajectory_message.joint_trajectory.points[-1])
+            self.get_logger().info("Stored linear pre-grasp endpoint joints: " + ", ".join(
+                    f"{name}={position:.6f}"
+                    for name, position in zip(trajectory_message.joint_trajectory.joint_names,
+                        last_point.positions,
+                    )
+                )
+            )
+            self.latest_linear_pregrasp_trajectory = (plan_result.trajectory)
+            self.latest_linear_pregrasp_plan_time = (time.monotonic())
+            self.publish_display_trajectory(plan_result.trajectory)
+            response.success = True
+            response.message = (
+                "Pilz LIN pre-grasp plan successful: "
+                f"{point_count} trajectory points. "
+                "Stored and displayed; not executed."
+            )
+            self.get_logger().info(response.message)
+            return response
+        except Exception as error:
+            self.latest_linear_pregrasp_trajectory = None
+            self.latest_linear_pregrasp_plan_time = None
+            response.success = False
+            response.message = ("Linear pre-grasp planning failed: " f"{error}")
+            self.get_logger().error(response.message)
+            return response
+        finally:
+            self.planning_lock.release()
+
+    def plan_hover_pose_callback(self, request, response,):
+        del request
+        # Never retain an earlier Hover trajectory when
+        # a new planning attempt begins.
+        self.latest_hover_trajectory = None
+        self.latest_hover_plan_time = None
+        if not self.planning_lock.acquire(blocking=False):
+            response.success = False
+            response.message = ("Planner is already processing " "another request.")
+            return response
+        try:
+            (grasp_pose, hover_pose,) = self.build_hover_target_pose()
+            end_effector_link = str(self.get_parameter("end_effector_link").value)
+            distance_m = float(self.get_parameter("hover_distance_m").value)
+            self.get_logger().info(
+                "Planning Pilz LIN hybrid Hover: "
+                f"distance={distance_m:.3f} m "
+                "along acquired grasp local -Z; "
+                "orientation=Ready orientation; "
+                "target_xyz=("
+                f"{hover_pose.pose.position.x:.4f}, "
+                f"{hover_pose.pose.position.y:.4f}, "
+                f"{hover_pose.pose.position.z:.4f})"
+            )
+            # Allow the executed retreat joint state to
+            # propagate before defining the LIN start state.
+            self.get_logger().info("Waiting for current-state synchronization " "before Hover LIN planning.")
+            time.sleep(1.0)
+            self.arm.set_start_state_to_current_state()
+            self.arm.set_goal_state(pose_stamped_msg=hover_pose, pose_link=end_effector_link,)
+            # Use the existing Pilz LIN request parameters
+            # already used by linear grasp and retreat.
+            plan_result = self.arm.plan(single_plan_parameters=(self.pilz_lin_parameters))
+            if not plan_result:
+                response.success = False
+                response.message = ("Pilz LIN failed to plan the " "hybrid Hover motion.")
+                self.get_logger().error(response.message)
+                return response
+            trajectory_message = (plan_result.trajectory.get_robot_trajectory_msg())
+            point_count = len(trajectory_message.joint_trajectory.points)
+            if point_count == 0:
+                response.success = False
+                response.message = ("Pilz LIN returned an empty " "Hover trajectory.")
+                self.get_logger().error(response.message)
+                return response
+            last_point = (trajectory_message.joint_trajectory.points[-1])
+            self.get_logger().info("Stored Hover LIN endpoint joints: " + ", ".join(
+                    f"{name}={position:.6f}"
+                    for name, position in zip(trajectory_message.joint_trajectory.joint_names,
+                        last_point.positions,
+                    )
+                )
+            )
+            self.latest_hover_trajectory = (plan_result.trajectory)
+            self.latest_hover_plan_time = (time.monotonic())
+            self.publish_display_trajectory(plan_result.trajectory)
+            response.success = True
+            response.message = (
+                "Pilz LIN hybrid Hover plan successful: "
+                f"{point_count} trajectory points; "
+                f"distance={distance_m:.3f} m. "
+                "Stored and displayed; not executed."
+            )
+            self.get_logger().info(response.message)
+            return response
+        except Exception as error:
+            self.latest_hover_trajectory = None
+            self.latest_hover_plan_time = None
+            response.success = False
+            response.message = ("Hover LIN planning failed: " f"{error}")
+            self.get_logger().error(response.message)
+            return response
+        finally:
+            self.planning_lock.release()
+
     def close(self):
         listener = getattr(self, "tf_listener", None,)
         if listener is not None:
@@ -430,16 +675,23 @@ class PregraspPlannerServer(Node):
         try:
             self.get_logger().warning("Executing stored pre-grasp trajectory on " "MOCK HARDWARE")
             result = self.robot.execute(self.latest_trajectory, controllers=[],)
+            # Never reuse a trajectory after an execution attempt.
+            self.latest_trajectory = None
+            self.latest_plan_time = None
+            # The robot may have moved partially even if MoveIt
+            # reports failure, so dependent plans must be cleared
+            # regardless of the result.
+            self.latest_grasp_trajectory = None
+            self.latest_grasp_plan_time = None
+            self.latest_retreat_trajectory = None
+            self.latest_retreat_plan_time = None
+            self.latest_hover_trajectory = None
+            self.latest_hover_plan_time = None
+            self.latest_linear_pregrasp_trajectory = None
+            self.latest_linear_pregrasp_plan_time = None
             if result:
-                # The pre-grasp plan has been consumed.
-                self.latest_trajectory = None
-                self.latest_plan_time = None
-                # Any previously planned final approach is now invalid,
-                # because its start state may no longer match the robot.
-                self.latest_grasp_trajectory = None
-                self.latest_grasp_plan_time = None
                 response.success = True
-                response.message = ("Mock pre-grasp trajectory executed successfully. " "Any stored linear grasp plan was cleared.")
+                response.message = ("Mock pre-grasp trajectory executed successfully. " "Stored plans were cleared.")
                 self.get_logger().info(response.message)
             else:
                 response.success = False
@@ -589,6 +841,10 @@ class PregraspPlannerServer(Node):
             # The stored trajectory must not be reused, regardless of the execution result.
             self.latest_grasp_trajectory = None
             self.latest_grasp_plan_time = None
+            self.latest_hover_trajectory = None
+            self.latest_hover_plan_time = None
+            self.latest_linear_pregrasp_trajectory = None
+            self.latest_linear_pregrasp_plan_time = None
             if not result:
                 self.latest_retreat_trajectory = None
                 self.latest_retreat_plan_time = None
@@ -634,7 +890,6 @@ class PregraspPlannerServer(Node):
             )
             self.get_logger().info(response.message)
             return response
-
         except Exception as error:
             # Prevent reuse if an exception happened during or after execution.
             self.latest_grasp_trajectory = None
@@ -756,6 +1011,10 @@ class PregraspPlannerServer(Node):
             # Never reuse an executed trajectory.
             self.latest_retreat_trajectory = None
             self.latest_retreat_plan_time = None
+            self.latest_hover_trajectory = None
+            self.latest_hover_plan_time = None
+            self.latest_linear_pregrasp_trajectory = None
+            self.latest_linear_pregrasp_plan_time = None
             if not result:
                 response.success = False
                 response.message = ("Mock linear retreat execution failed.")
@@ -819,6 +1078,149 @@ class PregraspPlannerServer(Node):
         response.success = True
         response.message = ("Stored linear retreat plan cleared.")
         self.get_logger().info(response.message)
+        return response
+
+    def execute_linear_pregrasp_callback(self, request, response,):
+        del request
+        if not bool(self.get_parameter("allow_execution").value):
+            response.success = False
+            response.message = ("Execution is disabled.")
+            return response
+        if not bool(self.get_parameter("mock_hardware").value):
+            response.success = False
+            response.message = ("Physical linear pre-grasp execution " "is currently blocked in software.")
+            return response
+        if (self.latest_linear_pregrasp_trajectory is None or self.latest_linear_pregrasp_plan_time is None):
+            response.success = False
+            response.message = ("No stored linear pre-grasp plan. Call " "/manipulation/plan_pregrasp_linear first.")
+            return response
+        maximum_age_s = float(self.get_parameter("maximum_plan_age_s").value)
+        plan_age_s = (time.monotonic() - self.latest_linear_pregrasp_plan_time)
+        if plan_age_s > maximum_age_s:
+            self.latest_linear_pregrasp_trajectory = None
+            self.latest_linear_pregrasp_plan_time = None
+            response.success = False
+            response.message = ("Stored linear pre-grasp plan is stale " f"({plan_age_s:.1f} seconds). " "Generate a new plan.")
+            return response
+        if not self.planning_lock.acquire(blocking=False):
+            response.success = False
+            response.message = ("Planner is busy.")
+            return response
+        try:
+            self.get_logger().warning("Executing Pilz LIN pre-grasp " "trajectory on MOCK HARDWARE")
+            result = self.robot.execute(self.latest_linear_pregrasp_trajectory, controllers=[],)
+            # Never reuse a trajectory after an execution
+            # attempt because the robot may have moved.
+            self.latest_linear_pregrasp_trajectory = None
+            self.latest_linear_pregrasp_plan_time = None
+            # All trajectories based on the previous start
+            # state are now invalid.
+            self.latest_trajectory = None
+            self.latest_plan_time = None
+            self.latest_grasp_trajectory = None
+            self.latest_grasp_plan_time = None
+            self.latest_retreat_trajectory = None
+            self.latest_retreat_plan_time = None
+            self.latest_hover_trajectory = None
+            self.latest_hover_plan_time = None
+            if not result:
+                response.success = False
+                response.message = ("Mock Pilz LIN pre-grasp execution " "failed. Dependent plans were cleared.")
+                self.get_logger().error(response.message)
+                return response
+            response.success = True
+            response.message = ("Mock Pilz LIN pre-grasp trajectory " "executed successfully. Dependent plans " "were cleared.")
+            self.get_logger().info(response.message)
+            return response
+        except Exception as error:
+            self.latest_linear_pregrasp_trajectory = None
+            self.latest_linear_pregrasp_plan_time = None
+            self.latest_grasp_trajectory = None
+            self.latest_grasp_plan_time = None
+            self.latest_retreat_trajectory = None
+            self.latest_retreat_plan_time = None
+            self.latest_hover_trajectory = None
+            self.latest_hover_plan_time = None
+            response.success = False
+            response.message = ("Linear pre-grasp execution failed: " f"{error}")
+            self.get_logger().error(response.message)
+            return response
+        finally:
+            self.planning_lock.release()
+
+    def clear_linear_pregrasp_callback(self, request, response,):
+        del request
+        self.disarm_physical_execution()
+        self.latest_linear_pregrasp_trajectory = None
+        self.latest_linear_pregrasp_plan_time = None
+        response.success = True
+        response.message = ("Stored linear pre-grasp plan cleared.")
+        self.get_logger().info(response.message)
+        return response
+
+    def execute_hover_pose_callback(self, request, response,):
+        del request
+        if not bool(self.get_parameter("allow_execution").value):
+            response.success = False
+            response.message = ("Execution is disabled.")
+            return response
+        if not bool(self.get_parameter("mock_hardware").value):
+            response.success = False
+            response.message = ("Hover-pose execution is restricted to mock hardware.")
+            return response
+        if (self.latest_hover_trajectory is None or self.latest_hover_plan_time is None):
+            response.success = False
+            response.message = ("No stored hover plan. Call " "/manipulation/plan_hover_pose first.")
+            return response
+        maximum_age_s = float(self.get_parameter("maximum_plan_age_s").value)
+        plan_age_s = (time.monotonic() - self.latest_hover_plan_time)
+        if plan_age_s > maximum_age_s:
+            self.latest_hover_trajectory = None
+            self.latest_hover_plan_time = None
+            response.success = False
+            response.message = ("Stored hover plan is stale " f"({plan_age_s:.1f} seconds).")
+            return response
+        if not self.planning_lock.acquire(blocking=False):
+            response.success = False
+            response.message = ("Planner is busy.")
+            return response
+        try:
+            self.get_logger().warning("Executing Pilz LIN hybrid hover trajectory " "on MOCK HARDWARE")
+            result = self.robot.execute(self.latest_hover_trajectory, controllers=[],)
+            self.latest_hover_trajectory = None
+            self.latest_hover_plan_time = None
+            self.latest_linear_pregrasp_trajectory = None
+            self.latest_linear_pregrasp_plan_time = None
+            # The robot start state has changed.
+            self.latest_trajectory = None
+            self.latest_plan_time = None
+            self.latest_grasp_trajectory = None
+            self.latest_grasp_plan_time = None
+            self.latest_retreat_trajectory = None
+            self.latest_retreat_plan_time = None
+            if not result:
+                response.success = False
+                response.message = ("Mock hover trajectory execution " "failed.")
+                return response
+            response.success = True
+            response.message = ("Mock Pilz LIN hybrid hover trajectory " "executed successfully.")
+            return response
+        except Exception as error:
+            self.latest_hover_trajectory = None
+            self.latest_hover_plan_time = None
+            response.success = False
+            response.message = (f"Hover execution failed: {error}")
+            self.get_logger().error(response.message)
+            return response
+        finally:
+            self.planning_lock.release()
+
+    def clear_hover_pose_plan_callback(self, request, response,):
+        del request
+        self.latest_hover_trajectory = None
+        self.latest_hover_plan_time = None
+        response.success = True
+        response.message = ("Stored hover pose plan cleared.")
         return response
 
 

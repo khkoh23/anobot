@@ -1,0 +1,21 @@
+/end_effector_server:
+  ros__parameters:
+    device: /tmp/ttyUR
+    baud_rate: 9600
+    read_timeout_s: 2.0
+    write_timeout_s: 0.50
+    response_delay_s: 0.02
+    inter_byte_quiet_s: 0.10
+    read_size: 128
+    flush_input_before_command: true
+    log_raw_serial: false
+    # Mandatory for the mock system.
+    dry_run: true
+    status_command_hex: "30"
+    tighten_command_hex: "31"
+    loosen_command_hex: "32"
+    open_command_hex: "33"
+    open_expected_text: "Open"
+    tighten_expected_text: "Tight"
+    loosen_expected_text: "Loose"
+    append_crc16_modbus: false

@@ -68,7 +68,18 @@ def generate_launch_description():
         ),
         launch_arguments={
             "use_mock_hardware": "true",
+            "mock_sensor_commands": "false",
             "launch_rviz": "false",
+            "use_tool_communication": "false",
+            "launch_end_effector_server": "true",
+            "end_effector_config_file": (
+                PathJoinSubstitution([FindPackageShare(
+                    "anobot_ur_bridge"
+                ),
+                "config",
+                "end_effector_mock.yaml",
+                ])
+            ),
             "activate_joint_controller": "true",
             "initial_joint_controller": (
                 "scaled_joint_trajectory_controller"
@@ -129,13 +140,13 @@ def generate_launch_description():
                 executable="static_transform_publisher",
                 name="mock_workstation_marker",
                 arguments=[
-                    "--x", "-0.130",
-                    "--y", "-0.817",
+                    "--x", "-0.134",
+                    "--y", "-0.810",
                     "--z", "-0.020",
-                    "--qx", "0.007",
-                    "--qy", "0.725",
+                    "--qx", "0.027",
+                    "--qy", "0.724",
                     "--qz", "0.689",
-                    "--qw", "-0.005",
+                    "--qw", "0.001",
                     "--frame-id", "ur_base",
                     "--child-frame-id",
                     "workstation_marker_26_calibrated",

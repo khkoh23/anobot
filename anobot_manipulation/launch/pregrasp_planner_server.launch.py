@@ -58,6 +58,11 @@ def generate_launch_description():
                 "maximum_grasp_orientation_error_deg": 1.0,
                 "ready_state_name": "ready",
                 "camera_view_state_name": "camera_view",
+                "hover_distance_m": 0.9,
+                "hover_orientation_x": 0.005,
+                "hover_orientation_y": 1.000,
+                "hover_orientation_z": -0.001,
+                "hover_orientation_w": 0.006,
             },
         ],
     )
